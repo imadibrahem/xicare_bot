@@ -1,0 +1,12 @@
+name: death-bot
+channels:
+  - defaults
+dependencies:
+  - python=3.12
+  - pip
+  - click=8.1
+  - tqdm=4.67
+  - pip:
+      - python-dotenv==1.1.0
+      - pypdf==5.4.0
+      - google-cloud-aiplatform==1.87.0
