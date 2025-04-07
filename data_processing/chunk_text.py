@@ -5,10 +5,11 @@ import click
 from dotenv import dotenv_values
 from tqdm import tqdm
 import numpy as np
+import itertools
 from sklearn.metrics.pairwise import cosine_similarity
 from wtpsplit import SaT
 from google.cloud import aiplatform
-from vertexai.preview.language_models import TextEmbeddingModel
+from vertexai.language_models import TextEmbeddingModel, TextEmbeddingInput
 
 config = dotenv_values(".env")
 
@@ -16,7 +17,7 @@ config = dotenv_values(".env")
 # fmt: off
 @click.command()
 @click.option("--output", "-o", type=click.Path(dir_okay=False), required=True, help="Output json file to save the chunks")
-@click.option("--overlap", "-ol", type=int, default=0, help="How many words will overlap between chunks")
+@click.option("--overlap", "-ol", type=int, default=0, help="How many sentences will overlap between chunks")
 @click.option("--page-marker", "-pm", default=r"--- (?P<book>.+) --- (?P<chapter>.*) --- (?P<page>\d*) ---", help="Regex string for seperating the pages, needs to include named groups 'book', 'chapter' & 'page'")
 @click.argument("text_path", type=click.Path(dir_okay=False, exists=True))
 # fmt: on
@@ -36,12 +37,15 @@ def chunk_text(
     single_sentences_list = split_sentences(text, page_marker)
 
     # Combine adjacent sentences to form a context window around each sentence
-    combined_sentences = combine_sentences(single_sentences_list)
-
-    click.echo(
-        "Convert the combined sentences into vector representations using a neural network model..."
+    combined_sentences = combine_sentences(
+        [sentence["text"] for sentence in single_sentences_list]
     )
-    embeddings = convert_to_vector(embedding_model, combined_sentences)
+
+    batch_size = 100
+    click.echo(
+        f"Convert the combined sentences into vector representations (batch size: {batch_size})..."
+    )
+    embeddings = convert_to_vector(embedding_model, combined_sentences, batch_size)
 
     # Calculate the cosine distances between consecutive combined sentence embeddings to measure similarity
     distances = calculate_cosine_distances(embeddings)
@@ -65,13 +69,29 @@ def chunk_text(
 
     # Loop through the identified breakpoints and create chunks accordingly
     for index in indices_above_thresh:
-        chunk = " ".join(single_sentences_list[start_index : index + 1])
+        chunk_sentences = single_sentences_list[
+            max(0, start_index - overlap) : min(
+                index + 1 + overlap, len(single_sentences_list) - 1
+            )
+        ]
+        chunk = {
+            "text": " ".join([sentence["text"] for sentence in chunk_sentences]),
+            "book": [sentence["book"] for sentence in chunk_sentences][0],
+            "chapter": [sentence["chapter"] for sentence in chunk_sentences][0],
+            "page": list(set([sentence["page"] for sentence in chunk_sentences])),
+        }
         chunks.append(chunk)
         start_index = index + 1
 
     # If there are any sentences left after the last breakpoint, add them as the final chunk
     if start_index < len(single_sentences_list):
-        chunk = " ".join(single_sentences_list[start_index:])
+        chunk_sentences = single_sentences_list[start_index:]
+        chunk = {
+            "text": " ".join([sentence["text"] for sentence in chunk_sentences]),
+            "book": [sentence["book"] for sentence in chunk_sentences][0],
+            "chapter": [sentence["chapter"] for sentence in chunk_sentences][0],
+            "page": list(set([sentence["page"] for sentence in chunk_sentences])),
+        }
         chunks.append(chunk)
 
     # Saving chunks to file
@@ -128,7 +148,7 @@ def split_with_named_groups(pattern: str, text: str) -> tuple[str, dict]:
     return splits, groups
 
 
-def split_sentences(text: str, page_marker: str) -> list[dict[str]]:
+def split_sentences(text: str, page_marker: str) -> list[dict[str, list]]:
     # Split the text into pages while preserving page information
     pages_text, pages_metadata = split_with_named_groups(page_marker, text)
 
@@ -177,7 +197,7 @@ def split_sentences(text: str, page_marker: str) -> list[dict[str]]:
     return combined_sentences
 
 
-def combine_sentences(sentences: list[dict[str]]) -> list[dict[str]]:
+def combine_sentences(sentences: list[dict[str, list]]) -> list[dict[str, list]]:
     # Create a buffer by combining each sentence with its previous and next sentence to provide a wider context
     combined_sentences = []
     for i in range(len(sentences)):
@@ -190,12 +210,17 @@ def combine_sentences(sentences: list[dict[str]]) -> list[dict[str]]:
     return combined_sentences
 
 
-def convert_to_vector(embedding_model, texts: str) -> np.ndarray:
+def convert_to_vector(embedding_model, texts: list[str], batch_size=250) -> np.ndarray:
     # Try to generate embeddings for a list of texts using a pre-trained model and handle any exceptions
     try:
-        embeddings = embedding_model.get_embeddings(texts)
-        embeddings = np.array([embedding.values for embedding in embeddings])
-        return embeddings
+        inputs = [TextEmbeddingInput(text, "SEMANTIC_SIMILARITY") for text in texts]
+
+        embeddings_batches = []
+        for inputs_batch in tqdm(list(itertools.batched(inputs, batch_size))):
+            embeddings = embedding_model.get_embeddings(inputs_batch)
+            embeddings_batches.append(embeddings)
+
+        return np.array(itertools.chain.from_iterable(embeddings_batches))
     except Exception as e:
         click.echo(click.style(f"Error converting to vector: {e}", fg="red"))
         return np.array([])  # Return an empty array in case of an error

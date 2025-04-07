@@ -20,7 +20,7 @@
             // "args": "${command:pickArgs}"
             "args": [
                 "--output=test.json",
-                "--overlap=0",
+                "--overlap=20",
                 "out/norbert-wiener-books/ex-prodigy.txt"
             ]
         }
