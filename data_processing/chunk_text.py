@@ -85,7 +85,7 @@ def chunk_text(
     click.echo(click.style("Text chunking complete.", fg="green"))
 
 
-def split_with_named_groups(pattern: str, text: str):
+def split_with_named_groups(pattern: str, text: str) -> tuple[str, dict]:
     """
     Splits a string using a regex pattern, including the named groups
     of the delimiter matches in the result list.
@@ -96,44 +96,42 @@ def split_with_named_groups(pattern: str, text: str):
         text: The string to split.
 
     Returns:
-        A list containing alternating segments of text (strings) and
-        dictionaries of named groups from the delimiters.
-        Returns a list containing only the original text if no matches are found.
+        A tuple of a list containing segments of text (strings) and
+        a list of dictionaries of named groups from the delimiters.
+        Returns a list containing only the original text and an empty
+        list for the named groups if no matches are found.
     """
-    results = []
+    splits = []
+    groups = []
     last_end = 0
     compiled_pattern = re.compile(pattern)  # Compile for potential efficiency
 
     for match in compiled_pattern.finditer(text):
         # Add the text segment *before* the current match
         start_span, end_span = match.span()
-        results.append(text[last_end:start_span])
+        splits.append(text[last_end:start_span])
 
         # Add the dictionary of named groups from the current match
-        results.append(match.groupdict())
+        groups.append(match.groupdict())
 
         # Update the position for the next segment
         last_end = end_span
 
     # Add the remaining text segment *after* the last match
-    results.append(text[last_end:])
+    splits.append(text[last_end:])
 
     # Optional: Filter out empty strings if desired, though standard
     # split often keeps them. Example: remove empty strings resulting
     # from adjacent delimiters or delimiters at start/end.
-    # results = [item for item in results if item != '']
+    splits = [item for item in splits if item != ""]
 
-    return results
+    return splits, groups
 
 
 def split_sentences(text: str, page_marker: str) -> list[dict[str]]:
     # Split the text into pages while preserving page information
-    pages_split = split_with_named_groups(page_marker, text)
-    # Filter out empty items
-    pages_split = [item for item in pages_split if item]
-    # Extract text and metadata
-    pages_text = pages_split[1::2]
-    pages_metadata = pages_split[::2]
+    pages_text, pages_metadata = split_with_named_groups(page_marker, text)
+
     # Split each page into sentences
     sentences = []
     sat = SaT("sat-3l-sm")
@@ -150,8 +148,33 @@ def split_sentences(text: str, page_marker: str) -> list[dict[str]]:
                     if sentence
                 ],
             ]
-    # TODO: Combine sentences that span multiple pages
-    return sentences
+    # Combine sentences that span multiple pages
+    combined_sentences = []
+    while len(sentences):
+        # Get a sentence including meatadata and turn page into a list
+        current_sentence = sentences.pop(0)
+        current_sentence = {
+            "text": current_sentence["text"],
+            "book": current_sentence["book"],
+            "chapter": current_sentence["chapter"],
+            "page": [current_sentence["page"]],
+        }
+        # If the sentence is the last on the page and does not end
+        # there, add the next and append the page number
+        if (
+            len(sentences)
+            and sentences[0]["page"] != current_sentence["page"][0]
+            and not (
+                current_sentence["text"][-1] in [".", ";", "!", "?"]
+                or current_sentence["text"][-2:] in ['."', ';"', '!"', '?"']
+            )
+        ):
+            next_sentence = sentences.pop(0)
+            current_sentence["text"] += f" {next_sentence["text"]}"
+            current_sentence["page"].append(next_sentence["page"])
+        combined_sentences.append(current_sentence)
+
+    return combined_sentences
 
 
 def combine_sentences(sentences: list[dict[str]]) -> list[dict[str]]:
