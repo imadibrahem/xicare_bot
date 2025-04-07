@@ -7,6 +7,11 @@ dependencies:
   - click=8.1
   - tqdm=4.67
   - pip:
-      - python-dotenv==1.1.0
-      - pypdf==5.4.0
       - google-cloud-aiplatform==1.87.0
+      - pypdf==5.4.0
+      - python-dotenv==1.1.0
+      - scikit-learn==1.6.1
+      - torch==2.6.0+cpu
+      - torchaudio==2.6.0+cpu
+      - torchvision==0.21.0+cpu
+      - wtpsplit==2.1.5
