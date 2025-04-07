@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 # fmt: off
 @click.command()
-@click.option('--output', '-o', type=click.Path(dir_okay=False), help="Output file to save the extracted text")
+@click.option('--output', '-o', type=click.Path(dir_okay=False), required=True, help="Output file to save the extracted text")
 @click.option('--name', '-n', type=click.Path(dir_okay=False), help="Name of the book to include in the page header")
 @click.option('--chapter', '-c', is_flag=True, default=False, help="Leave room in the page heading for the chapter name")
 @click.argument('pdf_path', type=click.Path(dir_okay=False, exists=True))
@@ -46,16 +46,13 @@ def extract_text_from_pdf(
         click.echo(click.style(f"Error processing PDF: {e}", fg="red"))
         return ""
 
-    # Save to file if specified
-    if output:
-        click.echo(f"Saving text to {output}")
+    # Save to file
+    click.echo(f"Saving text to {output}")
 
-        if os.path.dirname(output):
-            os.makedirs(os.path.dirname(output), exist_ok=True)
-        with open(output, "w", encoding="utf-8") as f:
-            f.write(full_text)
-    else:
-        click.echo(full_text)
+    if os.path.dirname(output):
+        os.makedirs(os.path.dirname(output), exist_ok=True)
+    with open(output, "w", encoding="utf-8") as f:
+        f.write(full_text)
 
     click.echo(click.style("Text extraction complete.", fg="green"))
 
