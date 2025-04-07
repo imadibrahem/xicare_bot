@@ -6,6 +6,7 @@ from dotenv import dotenv_values
 from tqdm import tqdm
 import numpy as np
 import itertools
+import statistics
 from sklearn.metrics.pairwise import cosine_similarity
 from wtpsplit import SaT
 from google.cloud import aiplatform
@@ -18,11 +19,18 @@ config = dotenv_values(".env")
 @click.command()
 @click.option("--output", "-o", type=click.Path(dir_okay=False), required=True, help="Output json file to save the chunks")
 @click.option("--overlap", "-ol", type=int, default=0, help="How many sentences will overlap between chunks")
+@click.option("--batch-size", "-b", type=click.IntRange(min=1, max_open=True), default=100, help="How many sentences to vectorize in each batch")
+@click.option("--similarity", "-s", type=click.FloatRange(min=0.0, max=1.0), default=0.8, help="How similar sentences have to be to be chunked together (smaller number leads to smaller chunk size)")
 @click.option("--page-marker", "-pm", default=r"--- (?P<book>.+) --- (?P<chapter>.*) --- (?P<page>\d*) ---", help="Regex string for seperating the pages, needs to include named groups 'book', 'chapter' & 'page'")
 @click.argument("text_path", type=click.Path(dir_okay=False, exists=True))
 # fmt: on
 def chunk_text(
-    output: str, overlap: int, page_marker: str, text_path: str
+    output: str,
+    overlap: int,
+    batch_size: int,
+    similarity: float,
+    page_marker: str,
+    text_path: str,
 ) -> list[str]:
     # Initialize Vertex AI
     aiplatform.init(project=config["PROJECT_ID"], location=config["LOCATION"])
@@ -33,7 +41,7 @@ def chunk_text(
     with open(text_path) as f:
         text = f.read()
 
-    click.echo("Splitting the input text into individual sentences...")
+    # "Split the input text into individual sentences
     single_sentences_list = split_sentences(text, page_marker)
 
     # Combine adjacent sentences to form a context window around each sentence
@@ -42,16 +50,14 @@ def chunk_text(
     )
 
     batch_size = 100
-    click.echo(
-        f"Convert the combined sentences into vector representations (batch size: {batch_size})..."
-    )
+    # Convert the combined sentences into vector representations
     embeddings = convert_to_vector(embedding_model, combined_sentences, batch_size)
 
     # Calculate the cosine distances between consecutive combined sentence embeddings to measure similarity
     distances = calculate_cosine_distances(embeddings)
 
-    # Determine the threshold distance for identifying breakpoints based on the 80th percentile of all distances
-    breakpoint_percentile_threshold = 80
+    # Determine the threshold distance for identifying breakpoints
+    breakpoint_percentile_threshold = similarity * 100
     breakpoint_distance_threshold = np.percentile(
         distances, breakpoint_percentile_threshold
     )
@@ -93,6 +99,11 @@ def chunk_text(
             "page": list(set([sentence["page"] for sentence in chunk_sentences])),
         }
         chunks.append(chunk)
+
+    # Print statistics
+    click.echo(
+        f"Split the text into {len(chunks)} with an average length of {statistics.fmean([len(chunk["text"]) for chunk in chunks])} characters."
+    )
 
     # Saving chunks to file
     click.echo(f"Saving text to {output}")
@@ -215,12 +226,17 @@ def convert_to_vector(embedding_model, texts: list[str], batch_size=250) -> np.n
     try:
         inputs = [TextEmbeddingInput(text, "SEMANTIC_SIMILARITY") for text in texts]
 
+        dimensionality = 256
+        kwargs = dict(output_dimensionality=dimensionality) if dimensionality else {}
+
         embeddings_batches = []
         for inputs_batch in tqdm(list(itertools.batched(inputs, batch_size))):
-            embeddings = embedding_model.get_embeddings(inputs_batch)
+            embeddings = embedding_model.get_embeddings(inputs_batch, **kwargs)
             embeddings_batches.append(embeddings)
 
-        return np.array(itertools.chain.from_iterable(embeddings_batches))
+        return np.array(
+            [item.values for item in itertools.chain.from_iterable(embeddings_batches)]
+        )
     except Exception as e:
         click.echo(click.style(f"Error converting to vector: {e}", fg="red"))
         return np.array([])  # Return an empty array in case of an error

@@ -21,6 +21,8 @@
             "args": [
                 "--output=test.json",
                 "--overlap=20",
+                "--batch-size=100",
+                "--similarity=0.8",
                 "out/norbert-wiener-books/ex-prodigy.txt"
             ]
         }
