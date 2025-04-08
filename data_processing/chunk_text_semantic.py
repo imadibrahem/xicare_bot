@@ -1,3 +1,4 @@
+from typing import Optional
 import re
 import os
 import json
@@ -23,7 +24,7 @@ config = dotenv_values(".env")
 @click.option("--output", "-o", type=click.Path(dir_okay=False), required=True, help="Output json file to save the chunks")
 @click.option("--overlap", "-ol", type=int, default=0, help="How many words will overlap between chunks")
 @click.option("--batch-size", "-b", type=click.IntRange(min=1, max_open=True), default=100, help="How many sentences to vectorize in each batch")
-@click.option("--dimensionality", "-d", type=click.IntRange(min=1, max_open=True), help="How many sentences to vectorize in each batch")
+@click.option("--dimensionality", "-d", type=click.IntRange(min=1, max_open=True), help="Dimensionality of the generated embeddings (uses model default if not specified)")
 @click.option("--similarity", "-s", type=click.FloatRange(min=0.0, max=1.0), default=0.8, help="How similar sentences have to be to be chunked together (smaller number leads to smaller chunk size)")
 @click.option("--page-marker", "-pm", default=r"--- (?P<book>.+) --- (?P<chapter>.*) --- (?P<page>\d*) ---", help="Regex string for seperating the pages, needs to include named groups 'book', 'chapter' & 'page'")
 @click.argument("text_path", type=click.Path(dir_okay=False, exists=True))
@@ -32,7 +33,7 @@ def chunk_text_semantic(
     output: str,
     overlap: int,
     batch_size: int,
-    dimensionality: int,
+    dimensionality: Optional[int],
     similarity: float,
     page_marker: str,
     text_path: str,

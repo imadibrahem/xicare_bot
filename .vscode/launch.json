@@ -36,8 +36,22 @@
             // "args": "${command:pickArgs}"
             "args": [
                 "--output=test.json",
-                "--overlap=200",
+                "--overlap=100",
                 "out/norbert-wiener-books/test.txt"
+            ]
+        },
+        {
+            "name": "create embeddings",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "data_processing/create_embeddings.py",
+            "console": "integratedTerminal",
+            // "args": "${command:pickArgs}"
+            "args": [
+                "--output=test.json",
+                "--dimensionality=256",
+                "--batch-size=10",
+                "out/test.json"
             ]
         }
     ]
