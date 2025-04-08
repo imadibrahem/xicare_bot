@@ -192,24 +192,22 @@ def split_paragraphs(text: str, page_marker: str) -> list[dict[str, list]]:
     return combined_paragraphs
 
 
-def add_overlap(
-    paragraphs: list[dict[str, list]], overlap: int
-) -> list[dict[str, list]]:
+def add_overlap(chunks: list[dict[str, list]], overlap: int) -> list[dict[str, list]]:
     """
-    Adds overlapping words between paragraphs to improve context continuity.
+    Adds overlapping words between chunks to improve context continuity.
 
     This function:
-    1. Splits paragraphs into sentences using the SaT model
+    1. Splits chunk into sentences using the SaT model
     2. Converts sentences to word tokens
-    3. For each paragraph, adds 'overlap' words from adjacent paragraphs
+    3. For each chunk, adds 'overlap' words from adjacent paragraphs
        (both before and after)
 
     Args:
-        paragraphs: List of paragraph dictionaries with text and metadata
+        chunks: List of chunks dictionaries with text and metadata
         overlap: Number of words to overlap between paragraphs
 
     Returns:
-        List of paragraphs with overlapping words added, maintaining the
+        List of chunks with overlapping words added, maintaining the
         same structure but with extended text content
     """
     # Load sentence splitter
@@ -221,7 +219,15 @@ def add_overlap(
 
     # Split paragraphs into sentences
     split_paragraphs = [
-        {**paragraph, "text": sat.split(paragraph["text"])} for paragraph in paragraphs
+        {
+            **paragraph,
+            "text": [
+                sentence.strip()
+                for sentence in sat.split(paragraph["text"])
+                if sentence
+            ],
+        }
+        for paragraph in chunks
     ]
     # Add newline to the beginning of previous paragraphs, so that they are preserved
     split_paragraphs = [
@@ -301,7 +307,7 @@ def add_overlap(
         overlapped_paragraphs.append(current_paragraph)
 
     overlapped_paragraphs = [
-        {**paragraph, "text": " ".join(paragraph["text"])}
+        {**paragraph, "text": " ".join(paragraph["text"]).strip()}
         for paragraph in overlapped_paragraphs
     ]
     return overlapped_paragraphs

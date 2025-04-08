@@ -13,13 +13,15 @@ from wtpsplit import SaT
 from google.cloud import aiplatform
 from vertexai.language_models import TextEmbeddingModel, TextEmbeddingInput
 
+from chunk_text_paragraph import add_overlap
+
 config = dotenv_values(".env")
 
 
 # fmt: off
 @click.command()
 @click.option("--output", "-o", type=click.Path(dir_okay=False), required=True, help="Output json file to save the chunks")
-@click.option("--overlap", "-ol", type=int, default=0, help="How many sentences will overlap between chunks")
+@click.option("--overlap", "-ol", type=int, default=0, help="How many words will overlap between chunks")
 @click.option("--batch-size", "-b", type=click.IntRange(min=1, max_open=True), default=100, help="How many sentences to vectorize in each batch")
 @click.option("--dimensionality", "-d", type=click.IntRange(min=1, max_open=True), help="How many sentences to vectorize in each batch")
 @click.option("--similarity", "-s", type=click.FloatRange(min=0.0, max=1.0), default=0.8, help="How similar sentences have to be to be chunked together (smaller number leads to smaller chunk size)")
@@ -113,11 +115,7 @@ def chunk_text_semantic(
 
     # Loop through the identified breakpoints and create chunks accordingly
     for index in indices_above_thresh:
-        chunk_sentences = single_sentences_list[
-            max(0, start_index - overlap) : min(
-                index + 1 + overlap, len(single_sentences_list) - 1
-            )
-        ]
+        chunk_sentences = single_sentences_list[start_index : index + 1]
         chunk = chunk_from_sentences(chunk_sentences)
         chunks.append(chunk)
         start_index = index + 1
@@ -127,6 +125,8 @@ def chunk_text_semantic(
         chunk_sentences = single_sentences_list[start_index:]
         chunk = chunk_from_sentences(chunk_sentences)
         chunks.append(chunk)
+
+    chunks = add_overlap(chunks, overlap)
 
     # Print statistics
     click.echo(
@@ -239,23 +239,51 @@ def split_sentences(text: str, page_marker: str) -> list[dict[str, list]]:
     if torch.cuda.is_available():
         sat.half().to("cuda")
 
-    # Split each page into sentences and preserve metadata
-    sentences = []
+    # Split each page into paragraphs and preserve metadata
+    paragraphs = []
     for page_text, page_metadata in tqdm(
-        zip(pages_text, pages_metadata),
+        zip([page.strip() for page in pages_text], pages_metadata),
         total=len(pages_text),
-        desc="Splitting pages into sentences",
+        desc="Splitting pages into paragraphs",
     ):
-        sentences_split = sat.split(page_text)
+        paragraphs_split = re.split(r"\n+", page_text)
         if page_text:
-            sentences = [
-                *sentences,
+            paragraphs = [
+                *paragraphs,
                 *[
-                    {"text": sentence.strip()} | page_metadata
-                    for sentence in sentences_split
-                    if sentence
+                    {"text": paragraph.strip()} | page_metadata
+                    for paragraph in paragraphs_split
+                    if paragraph
                 ],
             ]
+
+    # Split paragraphs into sentences
+    split_paragraphs = [
+        {**paragraph, "text": sat.split(paragraph["text"])} for paragraph in paragraphs
+    ]
+
+    # Add newline to the beginning of previous paragraphs, so that they are preserved
+    split_paragraphs = [
+        {
+            **paragraph,
+            "text": [
+                f"\n{sentence}" if index == 0 else sentence
+                for index, sentence in enumerate(paragraph["text"])
+            ],
+        }
+        for paragraph in split_paragraphs
+    ]
+
+    # Unpack the sentences, so each has proper metadata
+    sentences = list(
+        itertools.chain.from_iterable(
+            [
+                [{**paragraph, "text": sentence} for sentence in paragraph["text"]]
+                for paragraph in split_paragraphs
+            ]
+        )
+    )
+
     # Combine sentences that span multiple pages
     combined_sentences = []
     while len(sentences):

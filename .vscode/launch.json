@@ -20,10 +20,10 @@
             // "args": "${command:pickArgs}"
             "args": [
                 "--output=test.json",
-                // "--overlap=20",
+                "--overlap=100",
                 "--batch-size=100",
                 "--dimensionality=256",
-                "--similarity=0.8",
+                "--similarity=0.87",
                 "out/norbert-wiener-books/test.txt"
             ]
         },
