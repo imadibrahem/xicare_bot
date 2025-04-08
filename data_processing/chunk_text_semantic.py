@@ -26,7 +26,7 @@ config = dotenv_values(".env")
 @click.option("--page-marker", "-pm", default=r"--- (?P<book>.+) --- (?P<chapter>.*) --- (?P<page>\d*) ---", help="Regex string for seperating the pages, needs to include named groups 'book', 'chapter' & 'page'")
 @click.argument("text_path", type=click.Path(dir_okay=False, exists=True))
 # fmt: on
-def chunk_text(
+def chunk_text_semantic(
     output: str,
     overlap: int,
     batch_size: int,
@@ -61,7 +61,7 @@ def chunk_text(
     with open(text_path, encoding="utf-8") as f:
         text = f.read()
 
-    # "Split the input text into individual sentences
+    # Split the input text into individual sentences
     single_sentences_list = split_sentences(text, page_marker)
 
     # Combine adjacent sentences to form a context window around each sentence
@@ -130,7 +130,7 @@ def chunk_text(
 
     # Print statistics
     click.echo(
-        f"Split the text into {len(chunks)} with an average length of {statistics.fmean([len(chunk['text']) for chunk in chunks])} characters."
+        f"Split the text into {len(chunks)} with an average length of {statistics.fmean([len(chunk['text'.split(" ")]) for chunk in chunks])} words."
     )
 
     # Saving chunks to file
@@ -233,7 +233,6 @@ def split_sentences(text: str, page_marker: str) -> list[dict[str, list]]:
     pages_text, pages_metadata = split_with_named_groups(page_marker, text)
 
     # Load sentence splitter
-    sentences = []
     sat = SaT("sat-3l-sm")
 
     # Use GPU acceleration if available
@@ -241,8 +240,11 @@ def split_sentences(text: str, page_marker: str) -> list[dict[str, list]]:
         sat.half().to("cuda")
 
     # Split each page into sentences and preserve metadata
+    sentences = []
     for page_text, page_metadata in tqdm(
-        zip(pages_text, pages_metadata), total=len(pages_text)
+        zip(pages_text, pages_metadata),
+        total=len(pages_text),
+        desc="Splitting pages into sentences",
     ):
         sentences_split = sat.split(page_text)
         if page_text:
@@ -260,9 +262,7 @@ def split_sentences(text: str, page_marker: str) -> list[dict[str, list]]:
         # Extract sentence with metadata and convert page to a list
         current_sentence = sentences.pop(0)
         current_sentence = {
-            "text": current_sentence["text"],
-            "book": current_sentence["book"],
-            "chapter": current_sentence["chapter"],
+            **current_sentence,
             "page": [current_sentence["page"]],
         }
         # If the sentence continues on the next page (incomplete + different page number)
@@ -332,7 +332,10 @@ def convert_to_vector(
         kwargs = dict(output_dimensionality=dimensionality) if dimensionality else {}
 
         embeddings_batches = []
-        for inputs_batch in tqdm(list(itertools.batched(inputs, batch_size))):
+        for inputs_batch in tqdm(
+            list(itertools.batched(inputs, batch_size)),
+            desc="Converting batches into vectors",
+        ):
             embeddings = embedding_model.get_embeddings(inputs_batch, **kwargs)
             embeddings_batches.append(embeddings)
 
@@ -368,4 +371,4 @@ def calculate_cosine_distances(embeddings: np.ndarray) -> list[np.ndarray]:
 
 
 if __name__ == "__main__":
-    chunk_text()
+    chunk_text_semantic()

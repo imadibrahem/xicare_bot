@@ -12,18 +12,32 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "chunk text",
+            "name": "chunk text semantic",
             "type": "debugpy",
             "request": "launch",
-            "program": "data_processing/chunk_text.py",
+            "program": "data_processing/chunk_text_semantic.py",
             "console": "integratedTerminal",
             // "args": "${command:pickArgs}"
             "args": [
                 "--output=test.json",
-                "--overlap=20",
+                // "--overlap=20",
                 "--batch-size=100",
+                "--dimensionality=256",
                 "--similarity=0.8",
-                "out/norbert-wiener-books/ex-prodigy.txt"
+                "out/norbert-wiener-books/test.txt"
+            ]
+        },
+        {
+            "name": "chunk text paragraph",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "data_processing/chunk_text_paragraph.py",
+            "console": "integratedTerminal",
+            // "args": "${command:pickArgs}"
+            "args": [
+                "--output=test.json",
+                "--overlap=200",
+                "out/norbert-wiener-books/test.txt"
             ]
         }
     ]
