@@ -23,6 +23,15 @@ def chunk_text_paragraph(
     page_marker: str,
     text_path: str,
 ) -> None:
+    """
+    Process text files by splitting them into paragraphs with configurable word overlap. and saves it to a json file.
+
+    Args:
+        output: Path to save the JSON output file
+        overlap: Number of words to overlap between chunks
+        page_marker: Regex for identifying page breaks with named groups (book, chapter, page)
+        text_path: Path to the input text file
+    """
 
     with open(text_path, encoding="utf-8") as f:
         text = f.read()
@@ -34,7 +43,7 @@ def chunk_text_paragraph(
 
     # Print statistics
     click.echo(
-        f"Split the text into {len(chunks)} with an average length of {statistics.fmean([len(chunk['text'].split(" ")) for chunk in chunks])} words."
+        f"Split the text into {len(chunks)} chunks with an average length of {statistics.fmean([len(chunk['text'].split()) for chunk in chunks]):.1f} words."
     )
 
     # Saving chunks to file
@@ -48,7 +57,7 @@ def chunk_text_paragraph(
     click.echo(click.style("Text chunking complete.", fg="green"))
 
 
-def split_with_named_groups(pattern: str, text: str) -> tuple[str, dict]:
+def split_with_named_groups(pattern: str, text: str) -> tuple[list[str], list[dict]]:
     """
     Splits a string using a regex pattern, including the named groups
     of the delimiter matches in the result list.
@@ -92,6 +101,15 @@ def split_with_named_groups(pattern: str, text: str) -> tuple[str, dict]:
 
 
 def is_paragraph_complete(text: str) -> bool:
+    """
+    Determines if a sentence appears to be complete based on ending punctuation.
+
+    Args:
+        text: The sentence text to check
+
+    Returns:
+        True if the sentence appears complete, False otherwise
+    """
     # Strip whitespace to handle trailing spaces
     text = text.strip()
 
@@ -109,6 +127,24 @@ def is_paragraph_complete(text: str) -> bool:
 
 
 def split_paragraphs(text: str, page_marker: str) -> list[dict[str, list]]:
+    """
+    Splits text into paragraphs while preserving page metadata.
+
+    This function handles splitting text across multiple pages, and will combine
+    paragraphs that span page boundaries.
+
+    Args:
+        text: The complete text to process
+        page_marker: Regex pattern for identifying page markers with named groups
+                     'book', 'chapter', and 'page'
+
+    Returns:
+        List of paragraph dictionaries, each containing:
+        - 'text': The paragraph content
+        - 'book': Book identifier
+        - 'chapter': Chapter identifier
+        - 'page': List of page numbers where the paragraph appears
+    """
     # Split the text into pages while preserving page information
     pages_text, pages_metadata = split_with_named_groups(page_marker, text)
 
@@ -159,6 +195,23 @@ def split_paragraphs(text: str, page_marker: str) -> list[dict[str, list]]:
 def add_overlap(
     paragraphs: list[dict[str, list]], overlap: int
 ) -> list[dict[str, list]]:
+    """
+    Adds overlapping words between paragraphs to improve context continuity.
+
+    This function:
+    1. Splits paragraphs into sentences using the SaT model
+    2. Converts sentences to word tokens
+    3. For each paragraph, adds 'overlap' words from adjacent paragraphs
+       (both before and after)
+
+    Args:
+        paragraphs: List of paragraph dictionaries with text and metadata
+        overlap: Number of words to overlap between paragraphs
+
+    Returns:
+        List of paragraphs with overlapping words added, maintaining the
+        same structure but with extended text content
+    """
     # Load sentence splitter
     sat = SaT("sat-3l-sm")
 

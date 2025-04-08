@@ -130,7 +130,7 @@ def chunk_text_semantic(
 
     # Print statistics
     click.echo(
-        f"Split the text into {len(chunks)} with an average length of {statistics.fmean([len(chunk['text'.split(" ")]) for chunk in chunks])} words."
+        f"Split the text into {len(chunks)} chunks with an average length of {statistics.fmean([len(chunk['text'].split()) for chunk in chunks]):.1f} words."
     )
 
     # Saving chunks to file
@@ -144,7 +144,7 @@ def chunk_text_semantic(
     click.echo(click.style("Text chunking complete.", fg="green"))
 
 
-def split_with_named_groups(pattern: str, text: str) -> tuple[str, dict]:
+def split_with_named_groups(pattern: str, text: str) -> tuple[list[str], list[dict]]:
     """
     Splits a string using a regex pattern, including the named groups
     of the delimiter matches in the result list.
