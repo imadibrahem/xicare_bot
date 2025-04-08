@@ -14,12 +14,12 @@ config = dotenv_values(".env")
 
 # fmt: off
 @click.command()
-@click.option("--output", "-o", type=click.Path(dir_okay=False), required=True, help="Output json file to save the data and embeddings")
+@click.option("--output", "-o", type=click.Path(dir_okay=False), required=True, help="Output json lines file to save the data and embeddings")
 @click.option("--batch-size", "-b", type=click.IntRange(min=1, max_open=True), default=10, help="How many sentences to vectorize in each batch")
 @click.option("--dimensionality", "-d", type=click.IntRange(min=1, max_open=True), help="Dimensionality of the generated embeddings (uses model default if not specified)")
 @click.argument("json_path", type=click.Path(dir_okay=False, exists=True))
 # fmt: on
-def create_embeddings(
+def generate_embeddings(
     output: str, batch_size: int, dimensionality: Optional[int], json_path: str
 ) -> None:
     """
@@ -90,4 +90,4 @@ def create_embeddings(
 
 
 if __name__ == "__main__":
-    create_embeddings()
+    generate_embeddings()
