@@ -2,11 +2,10 @@ import re
 import os
 import json
 import click
-import torch
 from tqdm import tqdm
-import itertools
 import statistics
-from wtpsplit import SaT
+
+from chunking_tools import add_overlap, add_ids
 
 
 # fmt: off
@@ -14,20 +13,18 @@ from wtpsplit import SaT
 @click.option("--output", "-o", type=click.Path(dir_okay=False), required=True, help="Output json file to save the chunks")
 @click.option("--overlap", "-ol", type=int, default=0, help="How many words will overlap between chunks")
 @click.option("--page-marker", "-pm", default=r"--- (?P<book>.+) --- (?P<chapter>.*) --- (?P<page>\d*) ---", help="Regex string for seperating the pages, needs to include named groups 'book', 'chapter' & 'page'")
-@click.option("--id-base", "-i", type=int, default=0, help="The start of the id enumeration.")
+@click.option("--no-loose-ends", "-l", is_flag=True, help="Remove leading or trailing half sentences from chunks")
 @click.argument("text_path", type=click.Path(dir_okay=False, exists=True))
 # fmt: on
 def chunk_text_paragraph(
-    output: str, overlap: int, page_marker: str, id_base: int, text_path: str
+    output: str,
+    overlap: int,
+    page_marker: str,
+    no_loose_ends: bool,
+    text_path: str,
 ) -> None:
     """
     Process text files by splitting them into paragraphs with configurable word overlap. and saves it to a json file.
-
-    Args:
-        output: Path to save the JSON output file
-        overlap: Number of words to overlap between chunks
-        page_marker: Regex for identifying page breaks with named groups (book, chapter, page)
-        text_path: Path to the input text file
     """
 
     with open(text_path, encoding="utf-8") as f:
@@ -38,7 +35,7 @@ def chunk_text_paragraph(
 
     chunks = add_overlap(single_paragraphs_list, overlap)
 
-    chunks = add_ids(chunks, id_base)
+    chunks = add_ids(chunks)
 
     # Print statistics
     click.echo(
@@ -189,144 +186,6 @@ def split_paragraphs(text: str, page_marker: str) -> list[dict[str, list]]:
         combined_paragraphs.append(current_paragraph)
 
     return combined_paragraphs
-
-
-def add_overlap(chunks: list[dict[str, list]], overlap: int) -> list[dict[str, list]]:
-    """
-    Adds overlapping words between chunks to improve context continuity.
-
-    This function:
-    1. Splits chunk into sentences using the SaT model
-    2. Converts sentences to word tokens
-    3. For each chunk, adds 'overlap' words from adjacent paragraphs
-       (both before and after)
-
-    Args:
-        chunks: List of chunks dictionaries with text and metadata
-        overlap: Number of words to overlap between paragraphs
-
-    Returns:
-        List of chunks with overlapping words added, maintaining the
-        same structure but with extended text content
-    """
-    # Load sentence splitter
-    sat = SaT("sat-3l-sm")
-
-    # Use GPU acceleration if available
-    if torch.cuda.is_available():
-        sat.half().to("cuda")
-
-    # Split paragraphs into sentences
-    split_paragraphs = [
-        {
-            **paragraph,
-            "text": [
-                sentence.strip()
-                for sentence in sat.split(paragraph["text"])
-                if sentence
-            ],
-        }
-        for paragraph in chunks
-    ]
-    # Add newline to the beginning of previous paragraphs, so that they are preserved
-    split_paragraphs = [
-        {
-            **paragraph,
-            "text": [
-                f"\n{sentence}" if index == 0 else sentence
-                for index, sentence in enumerate(paragraph["text"])
-            ],
-        }
-        for paragraph in split_paragraphs
-    ]
-    # Split sentences into words
-    split_paragraphs_words = [
-        {
-            **paragraph,
-            "text": list(
-                itertools.chain.from_iterable(
-                    [sentence.strip(" ").split(" ") for sentence in paragraph["text"]]
-                )
-            ),
-        }
-        for paragraph in split_paragraphs
-    ]
-
-    overlapped_paragraphs = []
-    for index, paragraph in enumerate(
-        tqdm(split_paragraphs_words, desc="Overlapping paragraphs")
-    ):
-        current_overlap = overlap
-        current_index = index
-        current_paragraph = paragraph.copy()
-        while current_overlap > 0 and current_index > 0:
-            current_index -= 1
-            overlap_paragraph_length = len(
-                split_paragraphs_words[current_index]["text"]
-            )
-            current_paragraph["text"] = [
-                *split_paragraphs_words[current_index]["text"][
-                    -min(current_overlap, overlap_paragraph_length) :
-                ],
-                *current_paragraph["text"],
-            ]
-            current_overlap -= overlap_paragraph_length
-            current_paragraph["page"] = list(
-                set(
-                    [
-                        *current_paragraph["page"],
-                        *split_paragraphs_words[current_index]["page"],
-                    ]
-                )
-            )
-
-        current_overlap = overlap
-        current_index = index
-        while current_overlap > 0 and current_index < len(split_paragraphs_words) - 1:
-            current_index += 1
-            overlap_paragraph_length = len(
-                split_paragraphs_words[current_index]["text"]
-            )
-            current_paragraph["text"] = [
-                *current_paragraph["text"],
-                *split_paragraphs_words[current_index]["text"][
-                    : min(current_overlap, overlap_paragraph_length)
-                ],
-            ]
-            current_overlap -= overlap_paragraph_length
-            current_paragraph["page"] = list(
-                set(
-                    [
-                        *current_paragraph["page"],
-                        *split_paragraphs_words[current_index]["page"],
-                    ]
-                )
-            )
-
-        overlapped_paragraphs.append(current_paragraph)
-
-    overlapped_paragraphs = [
-        {**paragraph, "text": " ".join(paragraph["text"]).strip()}
-        for paragraph in overlapped_paragraphs
-    ]
-    return overlapped_paragraphs
-
-
-def add_ids(
-    chunks: list[dict[str, list]], index_start: int = 0
-) -> list[dict[str, list]]:
-    """
-    Add sequential identifiers to each chunk in a list of chunks.
-
-    Args:
-        chunks: A list of dictionaries representing text chunks.
-        index_start: The starting value for the ID numbering, by default 0.
-
-    Returns:
-        A list of dictionaries where each dictionary has an additional 'id' key
-        with a value that is its position in the list plus the index_start.
-    """
-    return [{**chunk, "id": index + index_start} for index, chunk in enumerate(chunks)]
 
 
 if __name__ == "__main__":

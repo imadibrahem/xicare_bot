@@ -15,9 +15,8 @@ config = dotenv_values(".env")
 @click.argument("paths", nargs=-1)
 # fmt: on
 def create_rag_corpus(chunk_size, chunk_overlap, display_name, paths):
-    """Create a RAG corpus with the given display name and data paths.
-
-    PATHS: One or more paths to data sources (GCS or Google Drive)
+    """
+    Create a RAG corpus with the given display name and data paths.
     """
 
     # Initialize Vertex AI API once per session
@@ -38,19 +37,22 @@ def create_rag_corpus(chunk_size, chunk_overlap, display_name, paths):
     )
 
     # Import Files to the RagCorpus
-    click.echo("Importing files to RAG corpus...")
-    rag.import_files(
-        rag_corpus.name,
-        paths,
-        # Optional
-        transformation_config=rag.TransformationConfig(
-            chunking_config=rag.ChunkingConfig(
-                chunk_size=chunk_size,
-                chunk_overlap=chunk_overlap,
+    if paths:
+        click.echo("Importing files to RAG corpus...")
+        rag.import_files(
+            rag_corpus.name,
+            paths,
+            # Optional
+            transformation_config=rag.TransformationConfig(
+                chunking_config=rag.ChunkingConfig(
+                    chunk_size=chunk_size,
+                    chunk_overlap=chunk_overlap,
+                ),
             ),
-        ),
-        max_embedding_requests_per_min=1000,  # Optional
-    )
+            max_embedding_requests_per_min=1000,  # Optional
+        )
+    else:
+        click.echo("Importing files to RAG corpus...")
 
     click.echo(f"RAG corpus created successfully!")
     click.echo(f"RAG corpus name: {rag_corpus.name}")

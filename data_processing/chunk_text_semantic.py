@@ -14,7 +14,7 @@ from wtpsplit import SaT
 from google.cloud import aiplatform
 from vertexai.language_models import TextEmbeddingModel, TextEmbeddingInput
 
-from chunk_text_paragraph import add_overlap, add_ids
+from chunking_tools import add_overlap, add_ids
 
 config = dotenv_values(".env")
 
@@ -42,19 +42,6 @@ def chunk_text_semantic(
 ) -> None:
     """
     Process and chunk text using semantic similarity-based boundaries.
-
-    This function takes a text file containing book content with page markers,
-    splits it into sentences, creates semantically meaningful chunks based on
-    embedding similarity, and saves the results to a JSON file.
-
-    Args:
-        output: Path to save the output JSON file containing chunks
-        overlap: Number of sentences to overlap between adjacent chunks
-        batch_size: Number of sentences to process at once during vectorization
-        dimensionality: Optional dimension size for embeddings (None uses model default)
-        similarity: Threshold for similarity percentile (0-1) - controls chunk size
-        page_marker: Regex pattern to identify page/book/chapter boundaries
-        text_path: Path to the input text file to be processed
     """
 
     # Initialize Vertex AI
@@ -314,30 +301,18 @@ def split_sentences(text: str, page_marker: str) -> list[dict[str, list]]:
 
 
 def combine_sentences(sentences: list[str]) -> list[str]:
-    """
-    Create context windows by combining sentences with their neighbors.
-
-    Each sentence is combined with its previous and next sentence to provide
-    contextual information, helping generate more meaningful embeddings.
-
-    Args:
-        sentences: List of individual sentence texts
-
-    Returns:
-        List of contextually enhanced sentences, where each item contains
-        the original sentence combined with its neighbors (when available)
-    """
-    combined_sentences = []
+    """Create context windows by combining each sentence with its neighbors."""
+    result = []
     for i in range(len(sentences)):
-        combined_sentence = sentences[i]
-        # Add previous sentence context if not the first sentence
+        # Build context with previous, current, and next sentence
+        parts = []
         if i > 0:
-            combined_sentence = sentences[i - 1] + " " + combined_sentence
-        # Add next sentence context if not the last sentence
+            parts.append(sentences[i - 1])
+        parts.append(sentences[i])
         if i < len(sentences) - 1:
-            combined_sentence += " " + sentences[i + 1]
-        combined_sentences.append(combined_sentence)
-    return combined_sentences
+            parts.append(sentences[i + 1])
+        result.append(" ".join(parts))
+    return result
 
 
 def convert_to_vector(
@@ -372,9 +347,7 @@ def convert_to_vector(
             embeddings = embedding_model.get_embeddings(inputs_batch, **kwargs)
             embeddings_batches.append(embeddings)
 
-        return np.array(
-            [item.values for item in itertools.chain.from_iterable(embeddings_batches)]
-        )
+        return np.array([item.values for batch in embeddings_batches for item in batch])
     except Exception as e:
         click.echo(click.style(f"Error converting to vector: {e}", fg="red"))
         return np.array([])  # Return an empty array in case of an error

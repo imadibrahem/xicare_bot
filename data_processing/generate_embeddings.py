@@ -26,13 +26,7 @@ def generate_embeddings(
 
     This script loads text data from a JSON file, generates vector embeddings
     for each text chunk using Google's text-embedding-005 model, and saves
-    the results to a JSONL file.
-
-    Args:
-        output: Path to save the output JSONL file with text and embeddings
-        batch_size: Number of text chunks to process in each API call batch
-        dimensionality: Optional embedding vector size (default is model's default)
-        json_path: Path to input JSON file containing text chunks to embed
+    the results to a JSON file.
     """
     # Initialize Vertex AI with project and location from config
     aiplatform.init(project=config["PROJECT_ID"], location=config["LOCATION"])
@@ -74,13 +68,9 @@ def generate_embeddings(
             )
         ]
 
-        # Save combined data+embeddings to JSONL format for efficient storage
-        # Write each JSON object as a separate line in the output file
+        # Save combined data+embeddings to JSON format
         with open(output, "w", encoding="utf-8") as f:
-            for item in data_embeddings:
-                # Convert each item to a JSON string and write with newline
-                json_line = json.dumps(item, ensure_ascii=False)
-                f.write(json_line + "\n")
+            json.dump(data_embeddings, f, ensure_ascii=False)
 
         click.echo(
             click.style(

@@ -20,10 +20,6 @@ def extract_text_from_pdf(
 ) -> None:
     """
     Extract embedded text from a PDF file using only PyPDF.
-
-    Args:
-        output (str, optional): Path to save the extracted text
-        pdf_path (str): Path to the PDF file
     """
 
     click.echo(f"Processing PDF: {pdf_path}")
