@@ -67,6 +67,14 @@
                 // "--dimensionality=256",
                 "out/ex-prodigy-paragraph-embeddings.json"
             ]
+        },
+        {
+            "name": "awaken norbert vertex ai rag",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "server/app_vertex_ai_rag.py",
+            "console": "integratedTerminal",
+            // "args": "${command:pickArgs}"
         }
     ]
 }
