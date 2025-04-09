@@ -14,7 +14,7 @@ from wtpsplit import SaT
 from google.cloud import aiplatform
 from vertexai.language_models import TextEmbeddingModel, TextEmbeddingInput
 
-from chunk_text_paragraph import add_overlap
+from chunk_text_paragraph import add_overlap, add_ids
 
 config = dotenv_values(".env")
 
@@ -27,6 +27,7 @@ config = dotenv_values(".env")
 @click.option("--dimensionality", "-d", type=click.IntRange(min=1, max_open=True), help="Dimensionality of the generated embeddings (uses model default if not specified)")
 @click.option("--similarity", "-s", type=click.FloatRange(min=0.0, max=1.0), default=0.8, help="How similar sentences have to be to be chunked together (smaller number leads to smaller chunk size)")
 @click.option("--page-marker", "-pm", default=r"--- (?P<book>.+) --- (?P<chapter>.*) --- (?P<page>\d*) ---", help="Regex string for seperating the pages, needs to include named groups 'book', 'chapter' & 'page'")
+@click.option("--id-base", "-i", type=int, default=0, help="The start of the id enumeration.")
 @click.argument("text_path", type=click.Path(dir_okay=False, exists=True))
 # fmt: on
 def chunk_text_semantic(
@@ -36,6 +37,7 @@ def chunk_text_semantic(
     dimensionality: Optional[int],
     similarity: float,
     page_marker: str,
+    id_base: int,
     text_path: str,
 ) -> None:
     """
@@ -128,6 +130,8 @@ def chunk_text_semantic(
         chunks.append(chunk)
 
     chunks = add_overlap(chunks, overlap)
+
+    chunks = add_ids(chunks, id_base)
 
     # Print statistics
     click.echo(

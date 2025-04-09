@@ -4,7 +4,6 @@ import json
 import click
 import torch
 from tqdm import tqdm
-import numpy as np
 import itertools
 import statistics
 from wtpsplit import SaT
@@ -15,13 +14,11 @@ from wtpsplit import SaT
 @click.option("--output", "-o", type=click.Path(dir_okay=False), required=True, help="Output json file to save the chunks")
 @click.option("--overlap", "-ol", type=int, default=0, help="How many words will overlap between chunks")
 @click.option("--page-marker", "-pm", default=r"--- (?P<book>.+) --- (?P<chapter>.*) --- (?P<page>\d*) ---", help="Regex string for seperating the pages, needs to include named groups 'book', 'chapter' & 'page'")
+@click.option("--id-base", "-i", type=int, default=0, help="The start of the id enumeration.")
 @click.argument("text_path", type=click.Path(dir_okay=False, exists=True))
 # fmt: on
 def chunk_text_paragraph(
-    output: str,
-    overlap: int,
-    page_marker: str,
-    text_path: str,
+    output: str, overlap: int, page_marker: str, id_base: int, text_path: str
 ) -> None:
     """
     Process text files by splitting them into paragraphs with configurable word overlap. and saves it to a json file.
@@ -40,6 +37,8 @@ def chunk_text_paragraph(
     single_paragraphs_list = split_paragraphs(text, page_marker)
 
     chunks = add_overlap(single_paragraphs_list, overlap)
+
+    chunks = add_ids(chunks, id_base)
 
     # Print statistics
     click.echo(
@@ -311,6 +310,23 @@ def add_overlap(chunks: list[dict[str, list]], overlap: int) -> list[dict[str, l
         for paragraph in overlapped_paragraphs
     ]
     return overlapped_paragraphs
+
+
+def add_ids(
+    chunks: list[dict[str, list]], index_start: int = 0
+) -> list[dict[str, list]]:
+    """
+    Add sequential identifiers to each chunk in a list of chunks.
+
+    Args:
+        chunks: A list of dictionaries representing text chunks.
+        index_start: The starting value for the ID numbering, by default 0.
+
+    Returns:
+        A list of dictionaries where each dictionary has an additional 'id' key
+        with a value that is its position in the list plus the index_start.
+    """
+    return [{**chunk, "id": index + index_start} for index, chunk in enumerate(chunks)]
 
 
 if __name__ == "__main__":

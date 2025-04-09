@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any, List
+from typing import Optional
 import click
 import json
 import itertools
@@ -14,7 +14,7 @@ config = dotenv_values(".env")
 # fmt: off
 @click.command()
 @click.option("--output", "-o", type=click.Path(dir_okay=False), required=True, help="Output json lines file to save the data and embeddings")
-@click.option("--batch-size", "-b", type=click.IntRange(min=1, max_open=True), default=10, help="How many sentences to vectorize in each batch")
+@click.option("--batch-size", "-b", type=click.IntRange(min=1, max_open=True), default=30, help="How many sentences to vectorize in each batch")
 @click.option("--dimensionality", "-d", type=click.IntRange(min=1, max_open=True), help="Dimensionality of the generated embeddings (uses model default if not specified)")
 @click.argument("json_path", type=click.Path(dir_okay=False, exists=True))
 # fmt: on
