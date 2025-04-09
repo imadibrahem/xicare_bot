@@ -9,9 +9,9 @@ config = dotenv_values(".env")
 
 # fmt: off
 @click.command()
-@click.option("--chunk-size", "-s", type=int, help="Size of the embedded chunks (in tokens)")
-@click.option("--chunk-overlap", "-o", type=int, help="Overlap between embedded chunks (in tokens)")
-@click.option("--display-name", "-n", type=str, help="Display name for the RAG corpus")
+@click.option("--chunk-size", "-s", type=int, default=512, help="Size of the embedded chunks (in tokens)")
+@click.option("--chunk-overlap", "-o", type=int, default=100, help="Overlap between embedded chunks (in tokens)")
+@click.option("--display-name", "-n", type=str, help="Display name for the RAG corpus", required=True)
 @click.argument("paths", nargs=-1)
 # fmt: on
 def create_rag_corpus(chunk_size, chunk_overlap, display_name, paths):

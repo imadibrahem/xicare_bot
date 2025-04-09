@@ -55,6 +55,18 @@
                 "--batch-size=10",
                 "out/test.json"
             ]
+        },
+        {
+            "name": "awaken norbert",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "server/app.py",
+            "console": "integratedTerminal",
+            // "args": "${command:pickArgs}"
+            "args": [
+                // "--dimensionality=256",
+                "out/ex-prodigy-paragraph-embeddings.json"
+            ]
         }
     ]
 }
