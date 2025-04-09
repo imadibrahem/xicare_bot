@@ -27,7 +27,7 @@ config = dotenv_values(".env")
 @click.option("--dimensionality", "-d", type=click.IntRange(min=1, max_open=True), help="Dimensionality of the generated embeddings (uses model default if not specified)")
 @click.option("--similarity", "-s", type=click.FloatRange(min=0.0, max=1.0), default=0.8, help="How similar sentences have to be to be chunked together (smaller number leads to smaller chunk size)")
 @click.option("--page-marker", "-pm", default=r"--- (?P<book>.+) --- (?P<chapter>.*) --- (?P<page>\d*) ---", help="Regex string for seperating the pages, needs to include named groups 'book', 'chapter' & 'page'")
-@click.option("--id-base", "-i", type=int, default=0, help="The start of the id enumeration.")
+@click.option("--no-loose-ends", "-l", is_flag=True, help="Remove leading or trailing half sentences from chunks")
 @click.argument("text_path", type=click.Path(dir_okay=False, exists=True))
 # fmt: on
 def chunk_text_semantic(
@@ -37,7 +37,7 @@ def chunk_text_semantic(
     dimensionality: Optional[int],
     similarity: float,
     page_marker: str,
-    id_base: int,
+    no_loose_ends: bool,
     text_path: str,
 ) -> None:
     """
@@ -116,9 +116,9 @@ def chunk_text_semantic(
         chunk = chunk_from_sentences(chunk_sentences)
         chunks.append(chunk)
 
-    chunks = add_overlap(chunks, overlap)
+    chunks = add_overlap(chunks, overlap, no_loose_ends)
 
-    chunks = add_ids(chunks, id_base)
+    chunks = add_ids(chunks)
 
     # Print statistics
     click.echo(

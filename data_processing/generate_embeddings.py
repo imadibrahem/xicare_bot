@@ -2,6 +2,7 @@ from typing import Optional
 import click
 import json
 import itertools
+import time
 from tqdm import tqdm
 from dotenv import dotenv_values
 from google.cloud import aiplatform
@@ -16,10 +17,15 @@ config = dotenv_values(".env")
 @click.option("--output", "-o", type=click.Path(dir_okay=False), required=True, help="Output json lines file to save the data and embeddings")
 @click.option("--batch-size", "-b", type=click.IntRange(min=1, max_open=True), default=30, help="How many sentences to vectorize in each batch")
 @click.option("--dimensionality", "-d", type=click.IntRange(min=1, max_open=True), help="Dimensionality of the generated embeddings (uses model default if not specified)")
+@click.option("--minute-rate", "-m", type=click.IntRange(min=1, max_open=True), help="How many requests to generate embeddings to make per minute")
 @click.argument("json_path", type=click.Path(dir_okay=False, exists=True))
 # fmt: on
 def generate_embeddings(
-    output: str, batch_size: int, dimensionality: Optional[int], json_path: str
+    output: str,
+    batch_size: int,
+    dimensionality: Optional[int],
+    minute_rate: Optional[int],
+    json_path: str,
 ) -> None:
     """
     Generate text embeddings for chunks of text using Google Vertex AI.
@@ -49,10 +55,16 @@ def generate_embeddings(
 
         # Generate embeddings in batches to avoid API limits
         embeddings_batches = []
+        rpm = 0
         for inputs_batch in tqdm(
             list(itertools.batched(inputs, batch_size)),
             desc="Generating embeddings for batches",
         ):
+            rpm + len(inputs_batch)
+            if minute_rate and rpm > minute_rate:
+                time.sleep(60)
+                rpm = 0
+
             # Get embeddings for current batch and add to results
             embeddings = embedding_model.get_embeddings(inputs_batch, **kwargs)
             embeddings_batches.append(embeddings)

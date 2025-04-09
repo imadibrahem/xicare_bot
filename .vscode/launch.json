@@ -24,6 +24,7 @@
                 "--batch-size=100",
                 "--dimensionality=256",
                 "--similarity=0.87",
+                "--no-loose-ends",
                 "out/norbert-wiener-books/test.txt"
             ]
         },
@@ -37,6 +38,7 @@
             "args": [
                 "--output=test.json",
                 "--overlap=100",
+                "--no-loose-ends",
                 "out/norbert-wiener-books/test.txt"
             ]
         },

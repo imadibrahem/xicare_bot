@@ -5,7 +5,7 @@ import click
 from tqdm import tqdm
 import statistics
 
-from chunking_tools import add_overlap, add_ids
+from chunking_tools import add_overlap, add_ids, is_paragraph_complete
 
 
 # fmt: off
@@ -31,9 +31,9 @@ def chunk_text_paragraph(
         text = f.read()
 
     # Split the input text into individual paragraphs
-    single_paragraphs_list = split_paragraphs(text, page_marker)
+    chunks = split_paragraphs(text, page_marker)
 
-    chunks = add_overlap(single_paragraphs_list, overlap)
+    chunks = add_overlap(chunks, overlap, no_loose_ends)
 
     chunks = add_ids(chunks)
 
@@ -94,32 +94,6 @@ def split_with_named_groups(pattern: str, text: str) -> tuple[list[str], list[di
     splits = [item for item in splits if item != ""]
 
     return splits, groups
-
-
-def is_paragraph_complete(text: str) -> bool:
-    """
-    Determines if a sentence appears to be complete based on ending punctuation.
-
-    Args:
-        text: The sentence text to check
-
-    Returns:
-        True if the sentence appears complete, False otherwise
-    """
-    # Strip whitespace to handle trailing spaces
-    text = text.strip()
-
-    # Empty text can't be complete
-    if not text:
-        return False
-
-    # Check for common sentence ending patterns
-    # This handles:
-    # - Standard ending punctuation (., !, ?, ;)
-    # - Quotes following punctuation (single or double)
-    pattern = r'([.!?;…]|(?<=[.!?;…])["\']|\.{3})$'
-
-    return bool(re.search(pattern, text))
 
 
 def split_paragraphs(text: str, page_marker: str) -> list[dict[str, list]]:
