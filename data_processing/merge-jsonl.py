@@ -17,7 +17,12 @@ def merge_jsonl(jsonl_files, output):
                 for line in infile:
                     outfile.write(line)
 
-    click.echo(f"Merged {len(jsonl_files)} files into {output}.")
+    click.echo(
+        click.style(
+            f"Merged {len(jsonl_files)} files into {output}.",
+            fg="green",
+        )
+    )
 
 
 if __name__ == "__main__":
