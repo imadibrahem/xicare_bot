@@ -8,7 +8,6 @@ dependencies:
   - tqdm=4.67
   - pip:
       - google-cloud-aiplatform==1.87.0
-      - jsonlines==4.0.0
       - pypdf==5.4.0
       - python-dotenv==1.1.0
       - scikit-learn==1.6.1
