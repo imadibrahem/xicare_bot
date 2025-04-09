@@ -1,7 +1,6 @@
-from typing import Optional
+from typing import Optional, Dict, Any, List
 import click
 import json
-import jsonlines
 import itertools
 from tqdm import tqdm
 from dotenv import dotenv_values
@@ -76,10 +75,12 @@ def generate_embeddings(
         ]
 
         # Save combined data+embeddings to JSONL format for efficient storage
-        with jsonlines.open(output, "w") as f:
-            f.write_all(
-                data_embeddings
-            )  # Fixed bug: was writing data instead of data_embeddings
+        # Write each JSON object as a separate line in the output file
+        with open(output, "w", encoding="utf-8") as f:
+            for item in data_embeddings:
+                # Convert each item to a JSON string and write with newline
+                json_line = json.dumps(item, ensure_ascii=False)
+                f.write(json_line + "\n")
 
         click.echo(
             click.style(
