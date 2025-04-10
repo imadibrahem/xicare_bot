@@ -12,48 +12,19 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "chunk text semantic",
+            "name": "generate embeddings",
             "type": "debugpy",
             "request": "launch",
-            "program": "data_processing/chunk_text_semantic.py",
+            "program": "data_processing/generate_embeddings.py",
             "console": "integratedTerminal",
             // "args": "${command:pickArgs}"
             "args": [
-                "--output=test.json",
-                "--overlap=100",
-                "--batch-size=100",
-                "--dimensionality=256",
-                "--similarity=0.87",
-                "--no-loose-ends",
-                "out/norbert-wiener-books/test.txt"
-            ]
-        },
-        {
-            "name": "chunk text paragraph",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "data_processing/chunk_text_paragraph.py",
-            "console": "integratedTerminal",
-            // "args": "${command:pickArgs}"
-            "args": [
-                "--output=test.json",
-                "--overlap=100",
-                "--no-loose-ends",
-                "out/norbert-wiener-books/test.txt"
-            ]
-        },
-        {
-            "name": "create embeddings",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "data_processing/create_embeddings.py",
-            "console": "integratedTerminal",
-            // "args": "${command:pickArgs}"
-            "args": [
-                "--output=test.json",
-                "--dimensionality=256",
-                "--batch-size=10",
-                "out/test.json"
+                "--output=out/ex-prodigy.json",
+                "--chunk-size=1024",
+                "--chunk-overlap=200",
+                // "--dimensionality=768",
+                "--batch-size=20",
+                "out/norbert-wiener-books/ex-prodigy-single.txt"
             ]
         },
         {
@@ -64,17 +35,9 @@
             "console": "integratedTerminal",
             // "args": "${command:pickArgs}"
             "args": [
-                // "--dimensionality=256",
-                "out/ex-prodigy-paragraph-embeddings.json"
+                // "--dimensionality=768",
+                "out/ex-prodigy.json"
             ]
-        },
-        {
-            "name": "awaken norbert vertex ai rag",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "server/app_vertex_ai_rag.py",
-            "console": "integratedTerminal",
-            // "args": "${command:pickArgs}"
         }
     ]
 }

@@ -17,9 +17,8 @@ config = dotenv_values(".env")
 # fmt: off
 @click.command()
 @click.option("--output", "-o", type=click.Path(dir_okay=False), required=True, help="Output json lines file to save the data and embeddings")
-@click.option("--chunk-size", "-c", type=click.IntRange(min=1, max_open=True), default=512, help="How many characters in a chunk")
-@click.option("--chunk-overlap", "-co", type=click.IntRange(min=1, max_open=True), default=512, help="How many characters overlap between chunks")
-@click.option("--batch-size", "-b", type=click.IntRange(min=1, max_open=True), default=30, help="How many sentences to vectorize in each batch")
+@click.option("--chunk-size", "-c", type=click.IntRange(min=1, max_open=True), default=1024, help="How many characters in a chunk")
+@click.option("--chunk-overlap", "-co", type=click.IntRange(min=1, max_open=True), default=200, help="How many characters overlap between chunks")
 @click.option("--batch-size", "-b", type=click.IntRange(min=1, max_open=True), default=30, help="How many sentences to vectorize in each batch")
 @click.option("--dimensionality", "-d", type=click.IntRange(min=1, max_open=True), help="Dimensionality of the generated embeddings (uses model default if not specified)")
 @click.option("--minute-rate", "-m", type=click.IntRange(min=1, max_open=True), help="How many requests to generate embeddings to make per minute")
@@ -62,7 +61,7 @@ def generate_embeddings(
 
     chunks = [
         {"document": chunk, "id": str(uuid.uuid4())}
-        for chunk in text_splitter.create_documents([text])
+        for chunk in text_splitter.split_text(text)
     ]
 
     try:

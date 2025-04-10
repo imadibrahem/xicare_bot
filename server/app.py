@@ -43,17 +43,9 @@ def awaken_norbert(dimensionality: Optional[int], data_path: str) -> None:
         },
     )
 
-    metadata_keys = ["book", "chapter"]
     collection.add(
-        documents=[item["text"] for item in data],
+        documents=[item["document"] for item in data],
         embeddings=[item["embedding"] for item in data],
-        metadatas=[
-            {
-                **{key: item[key] for key in item if key in metadata_keys},
-                "page": ", ".join(item["page"]),
-            }
-            for item in data
-        ],
         ids=[item["id"] for item in data],
     )
 
