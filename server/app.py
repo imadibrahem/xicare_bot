@@ -30,7 +30,7 @@ def awaken_norbert(dimensionality: Optional[int], data_path: str) -> None:
     # Set dimensionality parameter only if explicitly provided
     kwargs = dict(output_dimensionality=dimensionality) if dimensionality else {}
 
-    # Initiate chroma vector database
+    # Initiate chroma vector database & collection
     chroma_client = chromadb.Client()
 
     collection = chroma_client.create_collection(
@@ -38,7 +38,7 @@ def awaken_norbert(dimensionality: Optional[int], data_path: str) -> None:
         metadata={
             "hnsw:space": "cosine",
             "hnsw:construction_ef": 150,
-            "hnsw:search_ef": 150,
+            "hnsw:search_ef": 300,
             "hnsw:M": 32,
         },
     )
@@ -57,16 +57,28 @@ def awaken_norbert(dimensionality: Optional[int], data_path: str) -> None:
         ids=[item["id"] for item in data],
     )
 
-    # TODO
+    # Query RAG
     query = "What is your earliest memory?"
 
+    # TODO:
+    # - Query Expansion: Use an LLM to generate variations or related terms
+    #   for the original query and search for all of them.
+    # - Hypothetical Document Embeddings (HyDE): Use an LLM to generate a
+    #   hypothetical answer to the user's query first. Then, embed this
+    #   hypothetical answer and use that embedding to search for similar real
+    #   document chunks in ChromaDB. This often aligns the query embedding
+    #   better with the document embedding space.
+
+    # Convert query to embedding
     inputs = [TextEmbeddingInput(query, "RETRIEVAL_QUERY")]
     query_embeddings = embedding_model.get_embeddings(inputs, **kwargs)
 
     results = collection.query(
         query_embeddings=[embedding.values for embedding in query_embeddings],
-        n_results=10,
+        n_results=25,  # TODO: Maybe as high as 50
     )
+
+    # TODO: Implement re-ranking
 
     click.echo(results)
 
