@@ -3,9 +3,11 @@ import click
 import json
 import itertools
 import time
+import uuid
 from tqdm import tqdm
 from dotenv import dotenv_values
-from google.cloud import aiplatform
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+import vertexai
 from vertexai.language_models import TextEmbeddingModel, TextEmbeddingInput
 
 # Load environment variables from .env file
@@ -15,39 +17,59 @@ config = dotenv_values(".env")
 # fmt: off
 @click.command()
 @click.option("--output", "-o", type=click.Path(dir_okay=False), required=True, help="Output json lines file to save the data and embeddings")
+@click.option("--chunk-size", "-c", type=click.IntRange(min=1, max_open=True), default=512, help="How many characters in a chunk")
+@click.option("--chunk-overlap", "-co", type=click.IntRange(min=1, max_open=True), default=512, help="How many characters overlap between chunks")
+@click.option("--batch-size", "-b", type=click.IntRange(min=1, max_open=True), default=30, help="How many sentences to vectorize in each batch")
 @click.option("--batch-size", "-b", type=click.IntRange(min=1, max_open=True), default=30, help="How many sentences to vectorize in each batch")
 @click.option("--dimensionality", "-d", type=click.IntRange(min=1, max_open=True), help="Dimensionality of the generated embeddings (uses model default if not specified)")
 @click.option("--minute-rate", "-m", type=click.IntRange(min=1, max_open=True), help="How many requests to generate embeddings to make per minute")
-@click.argument("json_path", type=click.Path(dir_okay=False, exists=True))
+@click.argument("textfile_path", type=click.Path(dir_okay=False, exists=True))
 # fmt: on
 def generate_embeddings(
     output: str,
+    chunk_size: int,
+    chunk_overlap: int,
     batch_size: int,
     dimensionality: Optional[int],
     minute_rate: Optional[int],
-    json_path: str,
+    textfile_path: str,
 ) -> None:
     """
-    Generate text embeddings for chunks of text using Google Vertex AI.
+    Chunk a text file and generate text embeddings for chunks of text using Google Vertex AI.
 
-    This script loads text data from a JSON file, generates vector embeddings
-    for each text chunk using Google's text-embedding-005 model, and saves
-    the results to a JSON file.
+    This script loads text data from a file, chunks it and generates vector
+    embeddings for each text chunk using Google's text-embedding-005 model,
+    and saves the results to a JSON file.
     """
     # Initialize Vertex AI with project and location from config
-    aiplatform.init(project=config["PROJECT_ID"], location=config["LOCATION"])
+    vertexai.init(project=config["PROJECT_ID"], location=config["LOCATION"])
 
     # Load the text embedding model from Google Vertex AI
     embedding_model = TextEmbeddingModel.from_pretrained("text-embedding-005")
 
-    # Load source text data from JSON file
-    with open(json_path, encoding="utf-8") as f:
-        data = json.load(f)
+    # Load source text from text file
+    with open(textfile_path, encoding="utf-8") as f:
+        text = f.read()
+
+    # Chunk the text
+    text_splitter = RecursiveCharacterTextSplitter(
+        # Set a really small chunk size, just to show.
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+        length_function=len,
+        is_separator_regex=False,
+    )
+
+    chunks = [
+        {"document": chunk, "id": str(uuid.uuid4())}
+        for chunk in text_splitter.create_documents([text])
+    ]
 
     try:
-        # Convert data items to TextEmbeddingInput objects optimized for retrieval
+        # Convert chunk texts to TextEmbeddingInput objects optimized for retrieval
         inputs = [
-            TextEmbeddingInput(item["text"], "RETRIEVAL_DOCUMENT") for item in data
+            TextEmbeddingInput(chunk["document"], "RETRIEVAL_DOCUMENT")
+            for chunk in chunks
         ]
 
         # Set dimensionality parameter only if explicitly provided
@@ -74,9 +96,9 @@ def generate_embeddings(
     else:
         # Combine original data with corresponding embeddings
         data_embeddings = [
-            {**item, "embedding": embedding.values}
-            for item, embedding in zip(
-                data, itertools.chain.from_iterable(embeddings_batches)
+            {**chunk, "embedding": embedding.values}
+            for chunk, embedding in zip(
+                chunks, itertools.chain.from_iterable(embeddings_batches)
             )
         ]
 

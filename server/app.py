@@ -3,7 +3,7 @@ import click
 import chromadb
 import json
 from dotenv import dotenv_values
-from google.cloud import aiplatform
+import vertexai
 from vertexai.language_models import TextEmbeddingModel, TextEmbeddingInput
 
 # Load environment variables from .env file
@@ -23,7 +23,7 @@ def awaken_norbert(dimensionality: Optional[int], data_path: str) -> None:
             data.extend(json.load(f))
 
     # Initialize Vertex AI with project and location from config
-    aiplatform.init(project=config["PROJECT_ID"], location=config["LOCATION"])
+    vertexai.init(project=config["PROJECT_ID"], location=config["LOCATION"])
 
     # Load the text embedding model from Google Vertex AI
     embedding_model = TextEmbeddingModel.from_pretrained("text-embedding-005")

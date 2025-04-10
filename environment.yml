@@ -9,11 +9,6 @@ dependencies:
   - pip:
       - chromadb-1.0.3
       - google-cloud-aiplatform==1.87.0
+      - langchain-text-splitters==0.3.8
       - pypdf==5.4.0
       - python-dotenv==1.1.0
-      - scikit-learn==1.6.1
-      - wtpsplit==2.1.5
-      - --extra-index-url https://download.pytorch.org/whl/cpu
-      - torch==2.6.0+cpu
-      - torchaudio==2.6.0+cpu
-      - torchvision==0.21.0+cpu
