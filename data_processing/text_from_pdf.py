@@ -8,14 +8,10 @@ from tqdm import tqdm
 # fmt: off
 @click.command()
 @click.option('--output', '-o', type=click.Path(dir_okay=False), required=True, help="Output file to save the extracted text")
-@click.option('--name', '-n', type=click.Path(dir_okay=False), help="Name of the book to include in the page header")
-@click.option('--chapter', '-c', is_flag=True, default=False, help="Leave room in the page heading for the chapter name")
 @click.argument('pdf_path', type=click.Path(dir_okay=False, exists=True))
 # fmt: on
 def extract_text_from_pdf(
     output: Optional[str],
-    name: Optional[str],
-    chapter: bool,
     pdf_path: str,
 ) -> None:
     """
@@ -36,7 +32,7 @@ def extract_text_from_pdf(
             for page_num in tqdm(range(num_pages)):
                 page = reader.pages[page_num]
                 page_text = page.extract_text() or ""
-                full_text += f"\n\n--- {f'{name} --- ' if name else ''}{' --- 'if chapter else ''}{page_num + 1} ---\n\n{page_text}"
+                full_text += f"\n\n{page_text}"
 
     except Exception as e:
         click.echo(click.style(f"Error processing PDF: {e}", fg="red"))

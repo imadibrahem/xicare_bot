@@ -16,7 +16,7 @@ config = dotenv_values(".env")
 # fmt: on
 def import_files(chunk_size, chunk_overlap, corpus_name, paths):
     """
-    Create a RAG corpus with the given display name and data paths.
+    Add files to RAG corpus with the given display name and data urls (Google Cloud Storage bucket and Google Drive Links).
     """
 
     # Initialize Vertex AI API once per session

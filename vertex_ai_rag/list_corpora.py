@@ -9,9 +9,8 @@ config = dotenv_values(".env")
 
 # fmt: off
 @click.command()
-@click.argument("corpus_name", nargs=1)
 # fmt: on
-def delete_rag_corpus(corpus_name):
+def delete_rag_corpus():
     """
     Delete a RAG (Retrieval-Augmented Generation) corpus from Vertex AI.
 
@@ -22,9 +21,10 @@ def delete_rag_corpus(corpus_name):
     # Initialize Vertex AI API once per session
     vertexai.init(project=config["PROJECT_ID"], location=config["LOCATION"])
 
-    rag.delete_corpus(corpus_name)
+    corpora = list(rag.list_corpora().pages)[0].rag_corpora
 
-    click.echo(f"RAG corpus deleted successfully!")
+    for corpus in corpora:
+        click.echo(f"{corpus.display_name}: {corpus.name}")
 
 
 if __name__ == "__main__":

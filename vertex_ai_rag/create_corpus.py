@@ -11,12 +11,13 @@ config = dotenv_values(".env")
 @click.command()
 @click.option("--chunk-size", "-s", type=int, default=512, help="Size of the embedded chunks (in tokens)")
 @click.option("--chunk-overlap", "-o", type=int, default=100, help="Overlap between embedded chunks (in tokens)")
+@click.option("--max-requests", "-m", type=int, default=1000, help="Maximum amount of embedding requests to make to the Vertex AI API per minute")
 @click.option("--display-name", "-n", type=str, help="Display name for the RAG corpus", required=True)
 @click.argument("paths", nargs=-1)
 # fmt: on
-def create_rag_corpus(chunk_size, chunk_overlap, display_name, paths):
+def create_rag_corpus(chunk_size, chunk_overlap, max_requests, display_name, paths):
     """
-    Create a RAG corpus with the given display name and data paths.
+    Create a RAG corpus with the given display name and data urls (Google Cloud Storage bucket and Google Drive Links).
     """
 
     # Initialize Vertex AI API once per session
@@ -49,7 +50,7 @@ def create_rag_corpus(chunk_size, chunk_overlap, display_name, paths):
                     chunk_overlap=chunk_overlap,
                 ),
             ),
-            max_embedding_requests_per_min=1000,  # Optional
+            max_embedding_requests_per_min=max_requests,  # Optional
         )
     else:
         click.echo("Importing files to RAG corpus...")
