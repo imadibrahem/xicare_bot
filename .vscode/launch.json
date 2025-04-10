@@ -12,69 +12,13 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "chunk text semantic",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "data_processing/chunk_text_semantic.py",
-            "console": "integratedTerminal",
-            // "args": "${command:pickArgs}"
-            "args": [
-                "--output=test.json",
-                "--overlap=100",
-                "--batch-size=100",
-                "--dimensionality=256",
-                "--similarity=0.87",
-                "--no-loose-ends",
-                "out/norbert-wiener-books/test.txt"
-            ]
-        },
-        {
-            "name": "chunk text paragraph",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "data_processing/chunk_text_paragraph.py",
-            "console": "integratedTerminal",
-            // "args": "${command:pickArgs}"
-            "args": [
-                "--output=test.json",
-                "--overlap=100",
-                "--no-loose-ends",
-                "out/norbert-wiener-books/test.txt"
-            ]
-        },
-        {
-            "name": "create embeddings",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "data_processing/create_embeddings.py",
-            "console": "integratedTerminal",
-            // "args": "${command:pickArgs}"
-            "args": [
-                "--output=test.json",
-                "--dimensionality=256",
-                "--batch-size=10",
-                "out/test.json"
-            ]
-        },
-        {
             "name": "awaken norbert",
             "type": "debugpy",
             "request": "launch",
             "program": "server/app.py",
             "console": "integratedTerminal",
             // "args": "${command:pickArgs}"
-            "args": [
-                // "--dimensionality=256",
-                "out/ex-prodigy-paragraph-embeddings.json"
-            ]
-        },
-        {
-            "name": "awaken norbert vertex ai rag",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "server/app_vertex_ai_rag.py",
-            "console": "integratedTerminal",
-            // "args": "${command:pickArgs}"
+            "args": []
         }
     ]
 }
