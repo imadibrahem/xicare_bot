@@ -10,7 +10,7 @@ config = dotenv_values(".env")
 # fmt: off
 @click.command()
 # fmt: on
-def list_corpora() -> None:
+def list_rag_corpora() -> None:
     """
     Lists all RAG corpora available in the Vertex AI project.
 
