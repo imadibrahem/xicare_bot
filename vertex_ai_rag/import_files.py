@@ -14,7 +14,7 @@ config = dotenv_values(".env")
 @click.option("--corpus-name", "-n", type=str, help="Name for the RAG corpus (format: projects/\{\}/locations/\{\}/ragCorpora/\{\})")
 @click.argument("paths", nargs=-1)
 # fmt: on
-def import_files(chunk_size, chunk_overlap, corpus_name, paths):
+def import_files(chunk_size, chunk_overlap, corpus_name, paths) -> None:
     """
     Add files to RAG corpus with the given display name and data urls (Google Cloud Storage bucket and Google Drive Links).
     """

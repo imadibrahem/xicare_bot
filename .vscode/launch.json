@@ -12,6 +12,14 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "Python Debugger: Current File /w arguments",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": "${command:pickArgs}"
+        },
+        {
             "name": "awaken norbert",
             "type": "debugpy",
             "request": "launch",
