@@ -27,4 +27,4 @@ def list_rag_corpora() -> None:
 
 
 if __name__ == "__main__":
-    list_corpora()
+    list_rag_corpora()
