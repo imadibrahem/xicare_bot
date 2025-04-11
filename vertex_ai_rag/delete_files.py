@@ -12,11 +12,13 @@ config = dotenv_values(".env")
 @click.option("--corpus-name", "-n", type=str, help="Name for the RAG corpus (format: projects/\{\}/locations/\{\}/ragCorpora/\{\})", requires=True)
 @click.argument("files", nargs=-1)
 # fmt: on
-def import_files(corpus_name, files) -> None:
+def delete_rag_files(corpus_name, files) -> None:
     """
-    Add files to RAG corpus with the given display name and data urls (Google Cloud Storage bucket and Google Drive Links).
-    """
+    Deletes specified files from a RAG corpus in Vertex AI.
 
+    This function removes the specified files from the given RAG corpus
+    and provides confirmation messages for each deletion.
+    """
     # Initialize Vertex AI API once per session
     vertexai.init(project=config["PROJECT_ID"], location=config["LOCATION"])
 
@@ -27,4 +29,4 @@ def import_files(corpus_name, files) -> None:
 
 
 if __name__ == "__main__":
-    import_files()
+    delete_rag_files()
