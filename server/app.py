@@ -19,6 +19,7 @@ def awaken_norbert() -> None:
 
     # TODO
     query = "What is your earliest memory?"
+    # query = "Thank you that is very interesting and gives me things to think about. I wonder how that relates to robotics as well. Now please a different topic. Could you tell me of your earliest memory?"
 
     # Direct context retrieval
     rag_retrieval_config = rag.RagRetrievalConfig(
