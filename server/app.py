@@ -70,10 +70,10 @@ def awaken_norbert(dimensionality: Optional[int], data_path: str) -> None:
     #   queries) and use that as the new query <- THIS
     #   - System Prompt: You are an assistant for summarizing queries and
     #     extracting their intent. You will be given queries to process. Your
-    #     answers are a concise as possible. Try to find out what the user
+    #     answers are as concise as possible. Try to find out what the user
     #     wants to know and phrase that as a question (or if necessary, a
     #     series of questions) addressed to the same person the user is
-    #     addressing. If you cannot make out and intent or question, you will
+    #     addressing. If you cannot make out an intent or question, you will
     #     simply answer with the words "No clear intent".
     #   - Split the questions, take the last 2 ones and get 3 neighbors each
 
