@@ -5,6 +5,7 @@ import json
 from dotenv import dotenv_values
 import vertexai
 from vertexai.language_models import TextEmbeddingModel, TextEmbeddingInput
+from sentence_transformers import CrossEncoder
 
 # Load environment variables from .env file
 config = dotenv_values(".env")
@@ -30,6 +31,9 @@ def awaken_norbert(dimensionality: Optional[int], data_path: str) -> None:
     # Set dimensionality parameter only if explicitly provided
     kwargs = dict(output_dimensionality=dimensionality) if dimensionality else {}
 
+    # Load cross encoder
+    model = CrossEncoder("cross-encoder/ms-marco-MiniLM-L6-v2")
+
     # Initiate chroma vector database & collection
     chroma_client = chromadb.Client()
 
@@ -47,10 +51,12 @@ def awaken_norbert(dimensionality: Optional[int], data_path: str) -> None:
         documents=[item["document"] for item in data],
         embeddings=[item["embedding"] for item in data],
         ids=[item["id"] for item in data],
+        metadatas=[item["metadata"] for item in data],
     )
 
     # Query RAG
-    query = "What is your earliest memory?"
+    # query = "What is your earlies memory?"
+    query = "Thank you that is very interesting and gives me things to think about. I wonder how that relates to robotics as well. Now please a different topic. Could you tell me of your earliest memory?"
 
     # TODO:
     # - Query Expansion: Use an LLM to generate variations or related terms
@@ -60,19 +66,55 @@ def awaken_norbert(dimensionality: Optional[int], data_path: str) -> None:
     #   hypothetical answer and use that embedding to search for similar real
     #   document chunks in ChromaDB. This often aligns the query embedding
     #   better with the document embedding space.
+    # - Use an LLM to get the intent of the query first (important for complex
+    #   queries) and use that as the new query <- THIS
+    #   - System Prompt: You are an assistant for summarizing queries and
+    #     extracting their intent. You will be given queries to process. Your
+    #     answers are a concise as possible. Try to find out what the user
+    #     wants to know and phrase that as a question (or if necessary, a
+    #     series of questions) addressed to the same person the user is
+    #     addressing. If you cannot make out and intent or question, you will
+    #     simply answer with the words "No clear intent".
+    #   - Split the questions, take the last 2 ones and get 3 neighbors each
 
     # Convert query to embedding
     inputs = [TextEmbeddingInput(query, "RETRIEVAL_QUERY")]
     query_embeddings = embedding_model.get_embeddings(inputs, **kwargs)
 
+    # Search for nearest neighbors
     results = collection.query(
         query_embeddings=[embedding.values for embedding in query_embeddings],
         n_results=25,  # TODO: Maybe as high as 50
     )
 
-    # TODO: Implement re-ranking
+    # Rerank the results
+    cross_scores = model.predict(
+        [(query, document) for document in results["documents"][0]]
+    )
+    ranked_results = []
+    for id, document, metadata, distance, cross_score in zip(
+        results["ids"][0],
+        results["documents"][0],
+        results["metadatas"][0],
+        results["distances"][0],
+        cross_scores,
+    ):
+        ranked_results.append(
+            {
+                "id": id,
+                "document": document,
+                "metadata": metadata,
+                "distance": distance,
+                "cross_score": cross_score,
+            }
+        )
 
-    click.echo(results)
+    # Get top 3 reranked results
+    ranked_results = sorted(
+        ranked_results, key=lambda x: x["cross_score"], reverse=True
+    )[:3]
+
+    click.echo(ranked_results)
 
 
 if __name__ == "__main__":

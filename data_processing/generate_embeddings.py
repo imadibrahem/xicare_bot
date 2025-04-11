@@ -1,4 +1,5 @@
 from typing import Optional
+import os
 import click
 import json
 import itertools
@@ -95,7 +96,11 @@ def generate_embeddings(
     else:
         # Combine original data with corresponding embeddings
         data_embeddings = [
-            {**chunk, "embedding": embedding.values}
+            {
+                **chunk,
+                "embedding": embedding.values,
+                "metadata": {"file": os.path.basename(textfile_path)},
+            }
             for chunk, embedding in zip(
                 chunks, itertools.chain.from_iterable(embeddings_batches)
             )
