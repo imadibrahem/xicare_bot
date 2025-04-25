@@ -15,7 +15,9 @@ config = dotenv_values(".env")
 @click.option("--display-name", "-n", type=str, help="Display name for the RAG corpus", required=True)
 @click.argument("paths", nargs=-1)
 # fmt: on
-def create_rag_corpus(chunk_size, chunk_overlap, max_requests, display_name, paths):
+def create_rag_corpus(
+    chunk_size, chunk_overlap, max_requests, display_name, paths
+) -> None:
     """
     Create a RAG corpus with the given display name and data urls (Google Cloud Storage bucket and Google Drive Links).
     """

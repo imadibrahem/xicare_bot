@@ -11,13 +11,13 @@ config = dotenv_values(".env")
 @click.command()
 @click.argument("corpora_names", nargs=-1)
 # fmt: on
-def delete_rag_corpora(corpora_names):
+def delete_rag_corpora(corpora_names) -> None:
     """
-    Delete a RAG (Retrieval-Augmented Generation) corpus from Vertex AI.
+    Delete RAG (Retrieval-Augmented Generation) corpora from Vertex AI.
 
     This function initializes the Vertex AI client using project and location
     credentials from the .env file, then permanently deletes the specified
-    corpus. This operation cannot be undone.
+    corpora. This operation cannot be undone.
     """
     # Initialize Vertex AI API once per session
     vertexai.init(project=config["PROJECT_ID"], location=config["LOCATION"])
