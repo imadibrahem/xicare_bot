@@ -1,6 +1,5 @@
 import click
 from dotenv import dotenv_values
-from google.cloud import aiplatform
 from vertexai import rag
 import vertexai
 
@@ -13,7 +12,7 @@ config = dotenv_values(".env")
 # fmt: on
 def awaken_norbert() -> None:
     # Initialize Vertex AI with project and location from config
-    aiplatform.init(project=config["PROJECT_ID"], location=config["LOCATION"])
+    vertexai.init(project=config["PROJECT_ID"], location=config["LOCATION"])
 
     rag_corpus = rag.get_corpus(config["RAG_CORPUS"])
 
