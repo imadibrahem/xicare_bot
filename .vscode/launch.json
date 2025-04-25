@@ -19,6 +19,16 @@
             "console": "integratedTerminal",
             // "args": "${command:pickArgs}"
             "args": []
+        },
+        {
+            "name": "correct ocr",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "data_processing/correct_ocr.py",
+            "console": "integratedTerminal",
+            "args": [
+                "out/norbert-wiener-books/Cybernetics.md"
+            ]
         }
     ]
 }
