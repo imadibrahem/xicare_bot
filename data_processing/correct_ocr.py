@@ -76,10 +76,29 @@ Most common errors are:
     paragraphs = text.split("\n\n")
     corrected_paragraphs = []
 
+    # Count system prompt tokens
+    # Create content for the request
+    contents = [
+        types.Content(role="system", parts=[types.Part.from_text(text=si_text1)])
+    ]
+
+    # Call the API to count the system prompt tokens
+    system_prompt_tokens = 0
+    errors_recorded = False
+    try:
+        response = client.models.count_tokens(
+            model=model,
+            contents=contents,
+        )
+        system_prompt_tokens = response.total_tokens
+    except Exception as e:
+        click.echo(f"Error counting tokens system prompt: {e}")
+        errors_recorded = True
+
     with click.progressbar(paragraphs, label="Counting tokens") as bar:
-        total_token_count = 0
+        input_token_count = 0
+        output_token_count = 0
         last_token_count = 0
-        errors_recorded = False
         for paragraph in bar:
             # Skip empty paragraphs
             if not paragraph.strip():
@@ -91,7 +110,7 @@ Most common errors are:
                 types.Content(role="user", parts=[types.Part.from_text(text=paragraph)])
             ]
 
-            # Call the API to correct the paragraph
+            # Call the API to count the paragraph tokens
             try:
                 response = client.models.count_tokens(
                     model=model,
@@ -102,11 +121,14 @@ Most common errors are:
                 click.echo(f"Error counting tokens paragraph: {e}")
                 errors_recorded = True
 
-            total_token_count += last_token_count  # Add previous on failure
+            input_token_count += (
+                system_prompt_tokens + last_token_count
+            )  # Add previous on failure
+            output_token_count += last_token_count
 
     estimated_cost = (
-        total_token_count / 1_000_000 * input_price
-        + total_token_count / 1_000_000 * output_price
+        input_token_count / 1_000_000 * input_price
+        + output_token_count / 1_000_000 * output_price
     )
     click.echo(
         f"Estimated cost: ${estimated_cost:.2f}"
