@@ -7,7 +7,7 @@ dependencies:
   - click=8.1
   - tqdm=4.67
   - pip:
-      - chromadb-1.0.4
+      - chromadb==1.0.7
       - google-cloud-aiplatform==1.87.0
       - langchain-text-splitters==0.3.8
       - pypdf==5.4.0
