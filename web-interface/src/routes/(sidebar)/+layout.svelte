@@ -10,8 +10,7 @@
 <Sidebar.Provider>
 	<ChatSidebar />
 	<main class="w-full">
-		<Sidebar.Trigger class="sticky top-2 m-2" />
+		<Sidebar.Trigger class="bg-background fixed top-0 m-6 md:m-2" />
 		{@render children()}
-		<div></div>
 	</main>
 </Sidebar.Provider>

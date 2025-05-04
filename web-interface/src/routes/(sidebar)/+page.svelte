@@ -1,7 +1,12 @@
 <script lang="ts">
 	import Message from '$lib/components/message.svelte';
+	import Button from '$lib/components/ui/button/button.svelte';
+	import * as Tooltip from '$lib/components/ui/tooltip';
 
 	import type { Message as MessageType } from '$lib/types';
+
+	import ArrowUp from '@lucide/svelte/icons/arrow-up';
+	import Copy from '@lucide/svelte/icons/clipboard-copy';
 
 	const messages: MessageType[] = [
 		{
@@ -45,10 +50,50 @@
 			role: 'norbert'
 		}
 	];
+
+	let textarea: HTMLTextAreaElement;
+
+	const adjustHeight = () => {
+		if (textarea) {
+			textarea.style.height = 'auto';
+			textarea.style.height = `${textarea.scrollHeight}px`;
+		}
+	};
 </script>
 
-<div class="container flex flex-col gap-y-8">
-	{#each messages as message (message.time)}
-		<Message {...message}></Message>
-	{/each}
+<div class="container flex h-screen flex-col px-0">
+	<div class="flex-1 overflow-y-auto">
+		<div class="mx-4 flex flex-col gap-y-8 py-4 md:mx-10">
+			{#each messages as message (message.time)}
+				<Message {...message}></Message>
+			{/each}
+		</div>
+	</div>
+	<div
+		class="bg-secondary border-foreground mx-4 mb-10 flex shrink-0 resize-none gap-x-4 border-[1px] p-4 md:mx-10"
+	>
+		<textarea
+			name="query"
+			class="bg-secondary focus:border-foreground w-full resize-none self-center overflow-hidden outline-none focus:ring-0 md:text-lg"
+			placeholder="Type your message here..."
+			bind:this={textarea}
+			oninput={adjustHeight}
+			rows="1"
+		></textarea>
+		<Button size="icon" class="self-end rounded-full">
+			<ArrowUp />
+		</Button>
+	</div>
 </div>
+<Tooltip.Provider>
+	<Tooltip.Root>
+		<Tooltip.Trigger class="fixed right-0 top-0 m-6 md:m-2">
+			<Button size="icon" variant="ghost" class="bg-background h-7 w-7">
+				<Copy />
+			</Button>
+		</Tooltip.Trigger>
+		<Tooltip.Content>
+			<p>Copy conversation to clipboard</p>
+		</Tooltip.Content>
+	</Tooltip.Root>
+</Tooltip.Provider>
