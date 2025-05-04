@@ -12,5 +12,6 @@
 	<main class="w-full">
 		<Sidebar.Trigger class="sticky top-2 m-2" />
 		{@render children()}
+		<div></div>
 	</main>
 </Sidebar.Provider>
