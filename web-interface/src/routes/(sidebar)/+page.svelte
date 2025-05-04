@@ -80,7 +80,7 @@
 			oninput={adjustHeight}
 			rows="1"
 		></textarea>
-		<Button size="icon" class="self-end rounded-full">
+		<Button size="icon" class="shrink-0 self-end rounded-full">
 			<ArrowUp />
 		</Button>
 	</div>
