@@ -35,7 +35,7 @@
             "program": "data_processing/correct_ocr.py",
             "console": "integratedTerminal",
             "args": [
-                "out/norbert-wiener-books/Cybernetics.md"
+                "out/norbert-wiener-books/books/Cybernetics_shortened.md"
             ]
         }
     ]

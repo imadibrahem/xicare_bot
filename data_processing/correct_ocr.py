@@ -2,7 +2,6 @@ import click
 from dotenv import dotenv_values
 from google import genai
 from google.genai import types
-import os
 from pathlib import Path
 
 # Load environment variables from .env file
@@ -38,7 +37,7 @@ def correct_ocr(
         vertexai=True, project=config["PROJECT_ID"], location=config["LOCATION"]
     )
 
-    si_text1 = """
+    system_prompt = """
 You are a text corrector who fixes errors that occurred during OCR. You will get text chunks of markdown and respond with the corrected versions, keeping the markdown formatting intact.
 
 Most common errors are:
@@ -47,7 +46,9 @@ Most common errors are:
 - Characters like \"l\" or \"i\" that sometimes got misread by the OCR as \"!\" (e.g., \"G!bbs\", which you will correct to \"Gibbs\")
 - Charactlers like \"l\" that got misread as \"i\" (e.g., \"guii\", which you will correct to \"Gull\")
 - Characters like \"-\" that got misinterpreted as * (or \\* in markdown notation)
+- Character groups like \"fi\" that got misinterpreted as \"£\"
 - Incorrect spacing between quotation marks and text (e.g., \"' thickness '\", which you will correct to \"'thickness'\")
+- Weird characters like e.g. \"·\" are left between words, because of marks on the page that were scanned and interpreted as writing
 """
 
     generate_content_config = types.GenerateContentConfig(
@@ -65,7 +66,7 @@ Most common errors are:
             ),
             types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="OFF"),
         ],
-        system_instruction=[types.Part.from_text(text=si_text1)],
+        system_instruction=[types.Part.from_text(text=system_prompt)],
     )
 
     # Read the input markdown file
@@ -79,7 +80,7 @@ Most common errors are:
     # Count system prompt tokens
     # Create content for the request
     contents = [
-        types.Content(role="system", parts=[types.Part.from_text(text=si_text1)])
+        types.Content(role="system", parts=[types.Part.from_text(text=system_prompt)])
     ]
 
     # Call the API to count the system prompt tokens
