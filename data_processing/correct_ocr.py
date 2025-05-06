@@ -3,6 +3,7 @@ from dotenv import dotenv_values
 from google import genai
 from google.genai import types
 from pathlib import Path
+import re
 
 # Load environment variables from .env file
 config = dotenv_values(".env")
@@ -167,6 +168,9 @@ Most common errors are:
 
     # Join the corrected paragraphs back together
     corrected_text = "\n\n".join(corrected_paragraphs)
+
+    # remove excess newlines
+    corrected_text = re.sub(r"\n{3,}", "\n\n", corrected_text)
 
     # Save the result to the output file
     with open(output_file, "w", encoding="utf-8") as f:
