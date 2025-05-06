@@ -1,52 +1,6 @@
 <script lang="ts">
-	import Message from '$lib/components/message.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import ArrowUp from '@lucide/svelte/icons/arrow-up';
-
-	import type { Message as MessageType } from '$lib/types';
-
-	const messages: MessageType[] = [
-		{
-			text: 'Integer scelerisque, arcu ac maximus lobortis, odio diam viverra velit, vel semper tellus nunc quis augue.',
-			time: new Date(2025, 4, 4, 15, 1, 15),
-			role: 'user'
-		},
-		{
-			text: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed in dolor quis dui consequat ornare. Morbi consequat justo sit amet odio cursus, sit amet consequat ex varius. Nullam consectetur eget ex nec placerat. Donec vitae quam quam. Duis ullamcorper gravida suscipit. Ut nec augue massa. Curabitur porta suscipit eros, sed semper quam malesuada ut. Duis id leo eu libero luctus eleifend. Nunc lacus lectus, egestas a sollicitudin ut, congue sit amet eros. Donec sed malesuada arcu, a cursus arcu. In a fringilla eros. Sed tempus lectus nec luctus luctus.',
-			time: new Date(2025, 4, 4, 15, 2, 20),
-			role: 'norbert'
-		},
-		{
-			text: 'Nam feugiat neque nec euismod placerat. Suspendisse ipsum augue, gravida sit amet nunc at, mattis bibendum massa.',
-			time: new Date(2025, 4, 4, 15, 3, 48),
-			role: 'user'
-		},
-		{
-			text: 'Donec et porttitor dui. Integer lacinia, dolor ac porta accumsan, nunc nibh auctor nulla, sit amet fermentum nisi nisi a lorem. Ut ac tortor erat. Praesent vel consequat arcu. Proin sodales malesuada turpis vitae accumsan. Aenean ut purus augue. Nullam vitae dui eros. Sed rhoncus enim ac enim tincidunt porttitor. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Ut ultrices libero massa, semper efficitur nibh blandit ut. Nam elit felis, feugiat eget aliquam et, mattis a sapien. ',
-			time: new Date(2025, 4, 4, 15, 4, 5),
-			role: 'norbert'
-		},
-		{
-			text: 'Vestibulum semper eros eu lorem malesuada dapibus.',
-			time: new Date(2025, 4, 4, 15, 4, 50),
-			role: 'user'
-		},
-		{
-			text: 'Nunc placerat varius mattis. Curabitur sed metus a felis sollicitudin semper id quis nisi. Suspendisse lectus felis, tristique nec venenatis nec, sodales quis magna. Fusce non massa felis. Sed id bibendum eros. Donec mollis est ultrices elementum scelerisque. Sed id justo commodo, blandit diam vel, malesuada urna. ',
-			time: new Date(2025, 4, 4, 15, 5, 23),
-			role: 'norbert'
-		},
-		{
-			text: 'Sed dictum lobortis nunc, in vestibulum turpis sagittis nec. Sed et elementum ipsum. Etiam semper purus sit amet urna bibendum, ac vestibulum ante tincidunt.',
-			time: new Date(2025, 4, 4, 15, 6, 0),
-			role: 'user'
-		},
-		{
-			text: ' Vivamus nec mauris enim. Sed ex arcu, scelerisque vel aliquet a, feugiat nec metus. Vivamus commodo ex a rhoncus euismod. Mauris pharetra mauris ut tellus euismod vestibulum. Aenean interdum, nisi ac consectetur molestie, magna nibh consequat libero, at mattis lectus diam luctus sapien. Duis scelerisque sodales ligula, in efficitur est fermentum vitae. Duis rhoncus enim leo, sit amet faucibus ex rutrum in. Quisque at cursus nunc, at fermentum nisl. ',
-			time: new Date(2025, 4, 4, 15, 6, 47),
-			role: 'norbert'
-		}
-	];
 
 	let textarea: HTMLTextAreaElement;
 
@@ -60,10 +14,27 @@
 
 <div class="container flex h-full flex-col px-0">
 	<div class="flex-1 overflow-y-auto">
-		<div class="mx-4 flex h-full flex-col justify-end gap-y-8 py-4 md:mx-10">
-			{#each messages as message (message.time)}
-				<Message {...message}></Message>
-			{/each}
+		<div class="mx-4 flex h-full flex-col items-center justify-center py-4 md:mx-10">
+			<div class="max-w-2xl text-center">
+				<p class="[&:not(:first-child)]:mt-6">
+					Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent nec maximus nisl, vitae
+					faucibus turpis. Donec viverra lacinia dapibus. Etiam laoreet elit enim, ut pellentesque
+					diam egestas sed. Nam feugiat efficitur ultricies. Nunc efficitur sem magna. Etiam rutrum
+					quis erat quis eleifend. In hac habitasse platea dictumst. In id metus mauris. In sed
+					velit dui.
+				</p>
+				<p class="[&:not(:first-child)]:mt-6">
+					Vivamus molestie commodo ipsum, quis viverra enim ultricies et. Nam ornare magna at augue
+					bibendum, ac mattis sem lobortis. Duis at vestibulum urna, vitae accumsan erat. Sed velit
+					ipsum, tincidunt et ex eu, pulvinar sagittis dolor. Vestibulum in dictum quam. Donec
+					vestibulum id mi ac congue. Duis ut tristique magna, vitae dapibus dolor. Pellentesque
+					eget risus nec est ultrices euismod.
+				</p>
+			</div>
+			<div>
+				<span>Conversation setting setting</span>
+				<span>Can't be changed after conversation has started</span>
+			</div>
 		</div>
 	</div>
 	<div
