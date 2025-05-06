@@ -37,6 +37,20 @@
             "args": [
                 "out/norbert-wiener-books/books/Cybernetics_shortened.md"
             ]
+        },
+        {
+            "name": "create chat dataset",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "data_processing/create_chat_dataset.py",
+            "console": "integratedTerminal",
+            "args": [
+                "out/norbert-wiener-books/articles/Interview_US_News_Machines_smarter_than_men.md",
+                "out/dataset-1.json",
+                "--user-prefix=Q:",
+                "--model-prefix=A:",
+                "--pairs-per-object=1"
+            ]
         }
     ]
 }

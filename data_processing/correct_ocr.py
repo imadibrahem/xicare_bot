@@ -11,18 +11,18 @@ config = dotenv_values(".env")
 
 # fmt: off
 @click.command()
+@click.argument("input_file", type=click.Path(exists=True, dir_okay=False))
 @click.option("--model", "-m", default="gemini-2.0-flash-001", help="LLM model to use")
 @click.option("--output-file", "-o", type=click.Path(), help="Output file path (defaults to input_file with _corrected suffix)")
 @click.option("--input-price", "-ip", default=0.15, type=float, help="Price for 1M input text tokens in US$")
 @click.option("--output-price", "-op", default=0.60, type=float, help="Price for 1M output text tokens in US$")
-@click.argument("input_file", type=click.Path(exists=True, readable=True))
 # fmt: on
 def correct_ocr(
+    input_file: str,
     model: str,
     output_file: str,
     input_price: float,
     output_price: float,
-    input_file: str,
 ):
     """Correct OCR errors in a markdown file using Google's Gemini models."""
 

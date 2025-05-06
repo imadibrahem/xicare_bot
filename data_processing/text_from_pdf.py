@@ -7,12 +7,12 @@ from tqdm import tqdm
 
 # fmt: off
 @click.command()
-@click.option('--output', '-o', type=click.Path(dir_okay=False), required=True, help="Output file to save the extracted text")
 @click.argument('pdf_path', type=click.Path(dir_okay=False, exists=True))
+@click.option('--output', '-o', type=click.Path(dir_okay=False), required=True, help="Output file to save the extracted text")
 # fmt: on
 def extract_text_from_pdf(
-    output: Optional[str],
     pdf_path: str,
+    output: Optional[str],
 ) -> None:
     """
     Extract embedded text from a PDF file using only PyPDF.

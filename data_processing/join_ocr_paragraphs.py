@@ -21,10 +21,10 @@ def join_paragraphs(input_text):
 
 # fmt: off
 @click.command(help="Join incorrectly split paragraphs in OCR text files.")
-@click.option('-o', '--output', help='Path to the output file. If not specified, output is printed to stdout.')
 @click.argument('input_file', type=click.Path(exists=True, dir_okay=False, readable=True))
+@click.option('-o', '--output', help='Path to the output file. If not specified, output is printed to stdout.')
 # fmt: on
-def process_file(output: Optional[str], input_file: str):
+def process_file(input_file: str, output: Optional[str]):
     try:
         with open(input_file, "r", encoding="utf-8") as f:
             content = f.read()
