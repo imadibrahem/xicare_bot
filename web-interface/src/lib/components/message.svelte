@@ -12,9 +12,10 @@
 		{ 'bg-primary': role === 'user' },
 		{ 'text-primary-foreground': role === 'user' },
 		role === 'user' ? 'self-end' : 'self-start',
-		'flex flex-col gap-0.5 p-4'
+		'flex flex-col gap-0.5 p-4 md:mx-4'
 	)}
 >
-	<span class="md:text-lg">{text}</span>
-	<span class="text-sm opacity-80">{time.toLocaleTimeString('en-US')}</span>
+	<!-- md:text-lg -->
+	<span>{text}</span>
+	<span class="text-xs opacity-80">{time.toLocaleTimeString('en-US')}</span>
 </div>
