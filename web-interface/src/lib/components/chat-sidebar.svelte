@@ -12,27 +12,27 @@
 	const items = [
 		{
 			date: new Date(2025, 4, 4),
-			id: ''
+			id: '2ba163be-819a-4440-8645-05e3a481a6eb'
 		},
 		{
 			date: new Date(2025, 4, 3),
-			id: ''
+			id: '3336643c-7f8b-4dfa-9849-43e2cd5dbcc4'
 		},
 		{
 			date: new Date(2025, 4, 2),
-			id: ''
+			id: '15a3be9d-0353-4840-8232-f0324c149545'
 		},
 		{
 			date: new Date(2025, 4, 1),
-			id: ''
+			id: '36755256-d552-44f3-832d-58a10cd81641'
 		},
 		{
 			date: new Date(2025, 3, 30),
-			id: ''
+			id: '87328c9a-73a5-4794-a709-475cb81cbbb0'
 		},
 		{
 			date: new Date(2025, 3, 29),
-			id: ''
+			id: '10da238b-b829-46fd-9d9e-d84f43726ccb'
 		}
 	];
 </script>
