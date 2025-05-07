@@ -175,3 +175,7 @@ cython_debug/
 # Repo
 out
 /token-*.json
+
+# Pocketbase
+/pocketbase
+/pb_data
