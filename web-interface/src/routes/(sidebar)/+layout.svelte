@@ -1,11 +1,10 @@
 <script lang="ts">
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import Copy from '@lucide/svelte/icons/clipboard-copy';
-
-	import type { LayoutProps } from './$types';
-
 	import * as Sidebar from '$lib/components/ui/sidebar/index';
 	import ChatSidebar from '$lib/components/chat-sidebar.svelte';
+
+	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
 </script>
