@@ -161,10 +161,12 @@ Most common errors are:
                     contents=contents,
                     config=generate_content_config,
                 )
-                corrected_paragraphs.append(response.text)
+                corrected_paragraphs.append(response.text.strip())
             except Exception as e:
                 click.echo(f"Error processing paragraph: {e}")
-                corrected_paragraphs.append(paragraph)  # Use original on failure
+                corrected_paragraphs.append(
+                    paragraph.strip()
+                )  # Use original on failure
 
     # Join the corrected paragraphs back together
     corrected_text = "\n\n".join(corrected_paragraphs)

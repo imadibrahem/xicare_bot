@@ -45,8 +45,8 @@
             "program": "data_processing/create_chat_dataset.py",
             "console": "integratedTerminal",
             "args": [
-                "out/norbert-wiener-books/articles/Interview_US_News_Machines_smarter_than_men.md",
-                "out/dataset-1.json",
+                "out/norbert-wiener-books/articles/Interview_Man_and_Machine.md",
+                "out/men_and_machines.json",
                 "--user-prefix=Q:",
                 "--model-prefix=A:",
                 "--pairs-per-object=1"
