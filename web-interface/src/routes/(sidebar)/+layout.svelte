@@ -25,7 +25,7 @@
 	<ChatSidebar />
 	<main class="relative flex min-h-screen w-full flex-col">
 		<div
-			class="bg-background border-foreground sticky top-0 z-10 flex w-full shrink-0 justify-between border-[1px] md:pointer-events-none md:border-none md:bg-transparent"
+			class="bg-background border-foreground sticky top-0 z-10 flex w-full shrink-0 justify-between border-b-[1px] md:pointer-events-none md:border-none md:bg-transparent"
 		>
 			<Sidebar.Trigger
 				bind:sidebarObj={sidebar}
