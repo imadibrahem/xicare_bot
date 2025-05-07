@@ -12,9 +12,9 @@
 		}
 	};
 
-	let switch1 = false;
-	let switch2 = false;
-	let switch3 = true;
+	let switch1 = $state(false);
+	let switch2 = $state(false);
+	let switch3 = $state(true);
 </script>
 
 <div class="container flex h-full flex-col px-0">

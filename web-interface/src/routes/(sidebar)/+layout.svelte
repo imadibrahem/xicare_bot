@@ -7,6 +7,18 @@
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
+
+	import { onNavigate } from '$app/navigation';
+	import type { SidebarState } from '$lib/components/ui/sidebar/index';
+
+	let sidebar = $state<SidebarState | null>(null);
+
+	// Close the sidebar on mobile navigation
+	onNavigate(() => {
+		if (sidebar && sidebar.isMobile && sidebar.open) {
+			sidebar.toggle();
+		}
+	});
 </script>
 
 <Sidebar.Provider>
@@ -15,7 +27,10 @@
 		<div
 			class="bg-background border-foreground sticky top-0 z-10 flex w-full shrink-0 justify-between border-[1px] md:pointer-events-none md:border-none md:bg-transparent"
 		>
-			<Sidebar.Trigger class="bg-background pointer-events-auto m-2 md:m-2" />
+			<Sidebar.Trigger
+				bind:sidebarObj={sidebar}
+				class="bg-background pointer-events-auto m-2 md:m-2"
+			/>
 			<Tooltip.Provider>
 				<Tooltip.Root>
 					<Tooltip.Trigger
