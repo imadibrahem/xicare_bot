@@ -68,7 +68,6 @@
 		class="from-background pointer-events-none sticky bottom-0 -mt-14 shrink-0 resize-none bg-gradient-to-t from-50% to-transparent px-4 pb-10 pt-14 md:px-10"
 	>
 		<div class="bg-secondary border-foreground pointer-events-auto flex gap-x-4 border-[1px] p-4">
-			<!-- md:text-lg -->
 			<textarea
 				name="query"
 				class="bg-secondary focus:border-foreground w-full resize-none self-center overflow-hidden outline-none focus:ring-0"

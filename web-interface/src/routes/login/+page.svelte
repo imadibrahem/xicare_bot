@@ -1,8 +1,20 @@
 <script lang="ts">
-	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
+	import * as Form from '$lib/components/ui/form/index';
+
+	import { enhance } from '$app/forms';
+	import { superForm } from 'sveltekit-superforms';
+	import { zodClient } from 'sveltekit-superforms/adapters';
+	import { formSchema } from './schema';
+
+	import type { PageProps } from './$types.js';
+
+	let { data, form }: PageProps = $props();
+
+	const formValidation = superForm(data.formValidation, {
+		validators: zodClient(formSchema)
+	});
 </script>
 
 <main class="flex h-screen w-screen items-center justify-center">
@@ -12,19 +24,32 @@
 			<Card.Description>Enter your username below to log in</Card.Description>
 		</Card.Header>
 		<Card.Content>
-			<div class="grid gap-4">
-				<div class="grid gap-2">
-					<Label for="username">Username</Label>
-					<Input id="username" type="text" placeholder="SomeUser" required />
-				</div>
-				<div class="grid gap-2">
-					<div class="flex items-center">
-						<Label for="password">Password</Label>
-					</div>
-					<Input id="password" type="password" required />
-				</div>
-				<Button type="submit" class="w-full">Login</Button>
-			</div>
+			<form class="grid" method="POST" action="?/login" use:enhance>
+				<Form.Field form={formValidation} name="username">
+					<Form.Control>
+						{#snippet children({ props })}
+							<Form.Label>Username</Form.Label>
+							<Input type="text" {...props} />
+						{/snippet}
+					</Form.Control>
+					<Form.Description />
+					<Form.FieldErrors />
+				</Form.Field>
+				<Form.Field form={formValidation} name="password">
+					<Form.Control>
+						{#snippet children({ props })}
+							<Form.Label>Password</Form.Label>
+							<Input type="password" {...props} />
+						{/snippet}
+					</Form.Control>
+					<Form.Description />
+					<Form.FieldErrors />
+				</Form.Field>
+				<Form.Button class="mt-2 w-full">Login</Form.Button>
+				{#if form && !form.success}
+					<span class="mt-2 text-red-500">{form.message}</span>
+				{/if}
+			</form>
 		</Card.Content>
 	</Card.Root>
 </main>

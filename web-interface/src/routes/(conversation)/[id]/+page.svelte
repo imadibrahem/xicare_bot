@@ -5,7 +5,7 @@
 
 	import type { Message as MessageType } from '$lib/types';
 
-	const messages: MessageType[] = [
+	const messages = <MessageType[]>$state([
 		{
 			text: 'Integer scelerisque, arcu ac maximus lobortis, odio diam viverra velit, vel semper tellus nunc quis augue.',
 			time: new Date(2025, 4, 4, 15, 1, 15),
@@ -46,7 +46,7 @@
 			time: new Date(2025, 4, 4, 15, 6, 47),
 			role: 'norbert'
 		}
-	];
+	]);
 
 	let textarea: HTMLTextAreaElement;
 
@@ -61,16 +61,17 @@
 <div class="container flex h-full flex-col px-0">
 	<div class="flex-1 overflow-y-auto">
 		<div class="mx-4 flex h-full flex-col justify-end gap-y-4 py-4 md:mx-10 md:gap-y-8">
-			{#each messages as message (message.time)}
-				<Message {...message}></Message>
-			{/each}
+			{#key messages}
+				{#each messages as message (message.time)}
+					<Message {...message} />
+				{/each}
+			{/key}
 		</div>
 	</div>
 	<div
 		class="from-background pointer-events-none sticky bottom-0 -mt-14 shrink-0 resize-none bg-gradient-to-t from-50% to-transparent px-4 pb-10 pt-14 md:px-10"
 	>
 		<div class="bg-secondary border-foreground pointer-events-auto flex gap-x-4 border-[1px] p-4">
-			<!-- md:text-lg -->
 			<textarea
 				name="query"
 				class="bg-secondary focus:border-foreground w-full resize-none self-center overflow-hidden outline-none focus:ring-0"
