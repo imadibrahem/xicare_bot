@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Button from '$lib/components/ui/button/button.svelte';
+	import { Switch } from '$lib/components/ui/switch/index';
 	import ArrowUp from '@lucide/svelte/icons/arrow-up';
 
 	let textarea: HTMLTextAreaElement;
@@ -10,11 +11,15 @@
 			textarea.style.height = `${textarea.scrollHeight}px`;
 		}
 	};
+
+	let switch1 = false;
+	let switch2 = false;
+	let switch3 = true;
 </script>
 
 <div class="container flex h-full flex-col px-0">
 	<div class="flex-1 overflow-y-auto">
-		<div class="mx-4 flex h-full flex-col items-center justify-center py-4 md:mx-10">
+		<div class="mx-4 flex h-full flex-col items-center justify-center gap-10 py-4 md:mx-10">
 			<div class="max-w-2xl text-center">
 				<p class="[&:not(:first-child)]:mt-6">
 					Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent nec maximus nisl, vitae
@@ -31,9 +36,31 @@
 					eget risus nec est ultrices euismod.
 				</p>
 			</div>
-			<div>
-				<span>Conversation setting setting</span>
-				<span>Can't be changed after conversation has started</span>
+			<div class="flex w-full flex-col items-center gap-6 text-center">
+				<div class="flex flex-col">
+					<span>Conversation setting setting</span>
+					<span><em>Can't be changed after conversation has started</em></span>
+				</div>
+				<div class="flex w-full flex-col gap-4">
+					<div class="flex items-center gap-4">
+						<span class="grow-1 w-1/2 shrink-0 text-right">Some setting</span>
+						<div class="grow-1 flex w-1/2 shrink-0 justify-start">
+							<Switch aria-readonly disabled bind:checked={switch1} />
+						</div>
+					</div>
+					<div class="flex items-center gap-4">
+						<span class="grow-1 w-1/2 shrink-0 text-right">Some much longer setting</span>
+						<div class="grow-1 flex w-1/2 shrink-0 justify-start">
+							<Switch bind:checked={switch2} />
+						</div>
+					</div>
+					<div class="flex items-center gap-4">
+						<span class="grow-1 w-1/2 shrink-0 text-right">Some other setting</span>
+						<div class="grow-1 flex w-1/2 shrink-0 justify-start">
+							<Switch bind:checked={switch3} />
+						</div>
+					</div>
+				</div>
 			</div>
 		</div>
 	</div>
