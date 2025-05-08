@@ -1,16 +1,6 @@
 <script lang="ts">
-	import Button from '$lib/components/ui/button/button.svelte';
+	import ChatInput from '$lib/components/chat-input.svelte';
 	import { Switch } from '$lib/components/ui/switch/index';
-	import ArrowUp from '@lucide/svelte/icons/arrow-up';
-
-	let textarea: HTMLTextAreaElement;
-
-	const adjustHeight = () => {
-		if (textarea) {
-			textarea.style.height = 'auto';
-			textarea.style.height = `${textarea.scrollHeight}px`;
-		}
-	};
 
 	let switch1 = $state(false);
 	let switch2 = $state(false);
@@ -64,21 +54,5 @@
 			</div>
 		</div>
 	</div>
-	<div
-		class="from-background pointer-events-none sticky bottom-0 -mt-14 shrink-0 resize-none bg-gradient-to-t from-50% to-transparent px-4 pb-10 pt-14 md:px-10"
-	>
-		<div class="bg-secondary border-foreground pointer-events-auto flex gap-x-4 border-[1px] p-4">
-			<textarea
-				name="query"
-				class="bg-secondary focus:border-foreground w-full resize-none self-center overflow-hidden outline-none focus:ring-0"
-				placeholder="Type your message here..."
-				bind:this={textarea}
-				oninput={adjustHeight}
-				rows="1"
-			></textarea>
-			<Button size="icon" class="h-8 w-8 shrink-0 self-end rounded-full">
-				<ArrowUp />
-			</Button>
-		</div>
-	</div>
+	<ChatInput />
 </div>

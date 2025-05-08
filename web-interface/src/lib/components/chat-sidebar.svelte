@@ -1,6 +1,5 @@
 <script lang="ts">
 	import * as Sidebar from '$lib/components/ui/sidebar/index';
-	import Button from './ui/button/button.svelte';
 	import Plus from '@lucide/svelte/icons/plus';
 
 	const dateOptions: Intl.DateTimeFormatOptions = {

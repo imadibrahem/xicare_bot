@@ -1,9 +1,9 @@
 <script lang="ts">
+	import { cn } from '$lib/utils';
+
 	import type { Message } from '$lib/types';
 	import type { SvelteHTMLElements } from 'svelte/elements';
 	import type { WithElementRef } from 'bits-ui';
-
-	import { cn } from '$lib/utils';
 
 	let {
 		text,
