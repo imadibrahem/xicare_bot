@@ -24,7 +24,7 @@
 			<Card.Description>Enter your username below to log in</Card.Description>
 		</Card.Header>
 		<Card.Content>
-			<form class="grid" method="POST" action="?/login" use:enhance>
+			<form class="grid" action="?/login" method="POST" use:enhance>
 				<Form.Field form={formValidation} name="username">
 					<Form.Control>
 						{#snippet children({ props })}

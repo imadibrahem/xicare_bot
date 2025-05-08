@@ -1,5 +1,6 @@
 <script lang="ts">
 	import * as Sidebar from '$lib/components/ui/sidebar/index';
+	import Button from './ui/button/button.svelte';
 	import Plus from '@lucide/svelte/icons/plus';
 
 	const dateOptions: Intl.DateTimeFormatOptions = {
@@ -80,6 +81,11 @@
 						<a href="/about" {...props}>About</a>
 					{/snippet}
 				</Sidebar.MenuButton>
+			</Sidebar.MenuItem>
+			<Sidebar.MenuItem>
+				<form action="/logout" method="POST">
+					<Sidebar.MenuButton>Log out</Sidebar.MenuButton>
+				</form>
 			</Sidebar.MenuItem>
 		</Sidebar.Menu>
 	</Sidebar.Footer>
