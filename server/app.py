@@ -55,8 +55,8 @@ def awaken_norbert(dimensionality: Optional[int], data_path: str) -> None:
     )
 
     # Query RAG
-    # query = "What is your earlies memory?"
-    query = "Thank you that is very interesting and gives me things to think about. I wonder how that relates to robotics as well. Now please a different topic. Could you tell me of your earliest memory?"
+    query = "The messages in society may be so many that information is drowned out."
+    # query = "Thank you that is very interesting and gives me things to think about. I wonder how that relates to robotics as well. Now please a different topic. Could you tell me of your earliest memory?"
 
     # TODO:
     # - Query Expansion: Use an LLM to generate variations or related terms
@@ -84,7 +84,7 @@ def awaken_norbert(dimensionality: Optional[int], data_path: str) -> None:
     # Search for nearest neighbors
     results = collection.query(
         query_embeddings=[embedding.values for embedding in query_embeddings],
-        n_results=25,  # TODO: Maybe as high as 50
+        n_results=50,  # TODO: Maybe as high as 50
     )
 
     # Rerank the results
@@ -112,9 +112,10 @@ def awaken_norbert(dimensionality: Optional[int], data_path: str) -> None:
     # Get top 3 reranked results
     ranked_results = sorted(
         ranked_results, key=lambda x: x["cross_score"], reverse=True
-    )[:3]
+    )[:10]
 
-    click.echo(ranked_results)
+    for result in ranked_results:
+        click.echo(f"{result['document']}\n")
 
 
 if __name__ == "__main__":

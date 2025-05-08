@@ -36,7 +36,10 @@
             // "args": "${command:pickArgs}"
             "args": [
                 // "--dimensionality=768",
-                "out/ex-prodigy.json"
+                "out/embeddings/cybernetics.json",
+                "out/embeddings/ex-prodigy.json",
+                "out/embeddings/god-and-golem.json",
+                "out/embeddings/human-use.json"
             ]
         }
     ]
