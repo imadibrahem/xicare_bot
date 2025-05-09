@@ -7,7 +7,7 @@
 
 	let {
 		text,
-		time,
+		created,
 		role,
 		class: className,
 		ref = $bindable(null),
@@ -29,7 +29,7 @@
 >
 	<!-- md:text-lg -->
 	<span>{text}</span>
-	<span class="text-xs opacity-80">{time.toLocaleTimeString('en-US')}</span>
+	<span class="text-xs opacity-80">{new Date(created).toLocaleTimeString('en-US')}</span>
 </div>
 
 <style>

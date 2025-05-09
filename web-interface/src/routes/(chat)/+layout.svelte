@@ -6,7 +6,7 @@
 
 	import type { LayoutProps } from './$types';
 
-	let { children }: LayoutProps = $props();
+	let { data, children }: LayoutProps = $props();
 
 	import { onNavigate } from '$app/navigation';
 	import type { SidebarState } from '$lib/components/ui/sidebar/index';
@@ -22,7 +22,7 @@
 </script>
 
 <Sidebar.Provider>
-	<ChatSidebar />
+	<ChatSidebar conversations={data.conversations} />
 	<main class="relative flex min-h-screen w-full flex-col">
 		<div
 			class="bg-background border-foreground sticky top-0 z-10 flex w-full shrink-0 justify-between border-b-[1px] md:pointer-events-none md:border-none md:bg-transparent"
