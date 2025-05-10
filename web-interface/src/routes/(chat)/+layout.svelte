@@ -7,6 +7,7 @@
 	import { onNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import type { SidebarState } from '$lib/components/ui/sidebar/index';
+	import { copyMessagesToClipboard } from '$lib/utils';
 	import type { LayoutProps } from './$types';
 
 	let { data, children }: LayoutProps = $props();
@@ -40,19 +41,25 @@
 						respect and politeness.</em
 					>
 				{/each}
+				<Tooltip.Provider>
+					<Tooltip.Root>
+						<Tooltip.Trigger
+							class="bg-background ring-offset-background focus-visible:ring-ring hover:bg-accent hover:text-accent-foreground pointer-events-auto m-2 inline-flex h-7 w-7 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 md:m-2 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"
+							onclick={async () => {
+								// Fetch all messages
+								const response = await fetch(`conversation/${page.params.id}/list`);
+								const reply = await response.json();
+								copyMessagesToClipboard(reply);
+							}}
+						>
+							<Copy />
+						</Tooltip.Trigger>
+						<Tooltip.Content>
+							<p>Copy conversation to clipboard</p>
+						</Tooltip.Content>
+					</Tooltip.Root>
+				</Tooltip.Provider>
 			{/if}
-			<Tooltip.Provider>
-				<Tooltip.Root>
-					<Tooltip.Trigger
-						class="bg-background ring-offset-background focus-visible:ring-ring hover:bg-accent hover:text-accent-foreground pointer-events-auto m-2 inline-flex h-7 w-7 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 md:m-2 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"
-					>
-						<Copy />
-					</Tooltip.Trigger>
-					<Tooltip.Content>
-						<p>Copy conversation to clipboard</p>
-					</Tooltip.Content>
-				</Tooltip.Root>
-			</Tooltip.Provider>
 		</div>
 		<div class="flex-1">
 			{@render children()}

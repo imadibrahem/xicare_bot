@@ -1,6 +1,22 @@
-import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { type ClassValue, clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
 export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
 }
+
+export const copyMessagesToClipboard = (
+	messages: { role: string; text: string; created: string }[]
+) => {
+	const messagesString = messages.reduce(
+		(s, message) =>
+			s +
+			`${message.role} [${new Date(message.created).toLocaleTimeString('en-US')}]: ${message.text}\n\n`,
+		''
+	);
+	try {
+		navigator.clipboard.writeText(messagesString);
+	} catch (error) {
+		console.error('Failed to copy messages to clipboard:', error);
+	}
+};
