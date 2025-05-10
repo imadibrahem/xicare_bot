@@ -10,10 +10,15 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	try {
 		// get an up-to-date auth store state by verifying and refreshing the loaded auth model (if any)
-		if (event.locals.pb.authStore.isValid) await event.locals.pb.collection('users').authRefresh();
+		if (event.locals.pb.authStore.isValid) {
+			await event.locals.pb.collection('users').authRefresh();
+
+			event.locals.userId = event.locals.pb.authStore.record?.id;
+		}
 	} catch {
 		// clear the auth store on failed refresh
 		event.locals.pb.authStore.clear();
+		event.locals.userId = undefined;
 	}
 
 	// Check if user is authenticated and redirect if needed
