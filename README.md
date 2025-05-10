@@ -11,10 +11,11 @@ An implementation of a "death bot" of Norbert Wiener using an LLM and vector sea
 - web-interface
   - [ ] add message generation
   - [x] add the ability to delete conversations
-  - [ ] add await to message response
+  - [x] add await to message response
   - [x] add error handing for endpoints that interact with pocketbase
   - [x] add shortcut for message sending
   - [x] add clipboard copy
+  - [ ] add scroll to bottom
   - [ ] ? add aestetics
 - death bot
   - [ ] finetune with gemini
