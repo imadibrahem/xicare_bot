@@ -21,9 +21,17 @@
 		<div
 			class="mx-4 flex h-full flex-col justify-end gap-y-4 pb-8 pt-4 md:mx-10 md:gap-y-8 md:pb-10 md:pt-0"
 		>
-			{#each messages as message (message.id)}
-				<Message {...message} />
-			{/each}
+			{#if data.error}
+				<div class="flex h-full items-center justify-center">
+					<span class="text-lg text-red-800"
+						><strong>Error loading messages:</strong> {data.error}</span
+					>
+				</div>
+			{:else}
+				{#each messages as message (message.id)}
+					<Message {...message} />
+				{/each}
+			{/if}
 		</div>
 	</div>
 	<ChatInput
