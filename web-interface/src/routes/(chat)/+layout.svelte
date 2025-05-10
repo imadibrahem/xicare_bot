@@ -23,7 +23,7 @@
 </script>
 
 <Sidebar.Provider>
-	<ChatSidebar conversations={data.conversations} currentId={page.params.id} />
+	<ChatSidebar conversations={data.conversations} error={data.error} currentId={page.params.id} />
 	<main class="relative flex min-h-screen w-full flex-col">
 		<div
 			class="bg-background border-foreground sticky top-0 z-10 flex w-full shrink-0 items-center justify-between border-b-[1px] md:pointer-events-none md:border-none md:bg-transparent"

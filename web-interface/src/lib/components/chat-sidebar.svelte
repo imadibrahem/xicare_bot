@@ -13,8 +13,11 @@
 		day: 'numeric'
 	};
 
-	let { conversations, currentId }: { conversations: Conversation[]; currentId?: string } =
-		$props();
+	let {
+		conversations,
+		currentId,
+		error
+	}: { conversations: Conversation[]; currentId?: string; error?: unknown } = $props();
 </script>
 
 <Sidebar.Root>
@@ -34,42 +37,48 @@
 	</Sidebar.Header>
 	<Sidebar.Content>
 		<Sidebar.Group>
-			<Sidebar.GroupLabel>Conversations</Sidebar.GroupLabel>
-			<Sidebar.GroupContent>
-				<Sidebar.Menu>
-					{#each conversations as conversation (conversation.id)}
-						<Sidebar.MenuItem>
-							<ContextMenu.Root>
-								<ContextMenu.Trigger>
-									<Sidebar.MenuButton isActive={currentId === conversation.id}>
-										{#snippet child({ props })}
-											<a href="/{conversation.id}" {...props}>
-												{new Date(conversation.updated).toLocaleTimeString('en-US', dateOptions)}
-											</a>
-										{/snippet}
-									</Sidebar.MenuButton>
-								</ContextMenu.Trigger>
-								<ContextMenu.Content>
-									<ContextMenu.Item
-										onclick={async () => {
-											// Delete conversation and navigate to a new conversation if the current one was deleted
-											await fetch(`conversation/${conversation.id}/delete`, {
-												method: 'DELETE'
-											});
-											await invalidateAll();
-											if (page.params.id && page.params.id === conversation.id) {
-												await goto('/');
-											}
-										}}
-									>
-										Delete
-									</ContextMenu.Item>
-								</ContextMenu.Content>
-							</ContextMenu.Root>
-						</Sidebar.MenuItem>
-					{/each}
-				</Sidebar.Menu>
-			</Sidebar.GroupContent>
+			{#if error}
+				<span class="text-sm text-red-800"
+					><strong>Error loading conversations:</strong> {error}</span
+				>
+			{:else}
+				<Sidebar.GroupLabel>Conversations</Sidebar.GroupLabel>
+				<Sidebar.GroupContent>
+					<Sidebar.Menu>
+						{#each conversations as conversation (conversation.id)}
+							<Sidebar.MenuItem>
+								<ContextMenu.Root>
+									<ContextMenu.Trigger>
+										<Sidebar.MenuButton isActive={currentId === conversation.id}>
+											{#snippet child({ props })}
+												<a href="/{conversation.id}" {...props}>
+													{new Date(conversation.updated).toLocaleTimeString('en-US', dateOptions)}
+												</a>
+											{/snippet}
+										</Sidebar.MenuButton>
+									</ContextMenu.Trigger>
+									<ContextMenu.Content>
+										<ContextMenu.Item
+											onclick={async () => {
+												// Delete conversation and navigate to a new conversation if the current one was deleted
+												await fetch(`conversation/${conversation.id}/delete`, {
+													method: 'DELETE'
+												});
+												await invalidateAll();
+												if (page.params.id && page.params.id === conversation.id) {
+													await goto('/');
+												}
+											}}
+										>
+											Delete
+										</ContextMenu.Item>
+									</ContextMenu.Content>
+								</ContextMenu.Root>
+							</Sidebar.MenuItem>
+						{/each}
+					</Sidebar.Menu>
+				</Sidebar.GroupContent>
+			{/if}
 		</Sidebar.Group>
 	</Sidebar.Content>
 	<Sidebar.Footer>
