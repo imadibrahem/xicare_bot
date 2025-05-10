@@ -8,7 +8,7 @@
 	import { zodClient } from 'sveltekit-superforms/adapters';
 	import { formSchema } from './schema';
 
-	import type { PageProps } from './$types.js';
+	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
 

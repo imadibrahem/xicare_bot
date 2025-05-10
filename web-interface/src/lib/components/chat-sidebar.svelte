@@ -1,8 +1,11 @@
 <script lang="ts">
 	import * as Sidebar from '$lib/components/ui/sidebar/index';
+	import * as ContextMenu from '$lib/components/ui/context-menu/index';
 	import Plus from '@lucide/svelte/icons/plus';
 
+	import { goto, invalidateAll } from '$app/navigation';
 	import type { Conversation } from '$lib/types';
+	import { page } from '$app/state';
 
 	const dateOptions: Intl.DateTimeFormatOptions = {
 		year: 'numeric',
@@ -36,13 +39,33 @@
 				<Sidebar.Menu>
 					{#each conversations as conversation (conversation.id)}
 						<Sidebar.MenuItem>
-							<Sidebar.MenuButton isActive={currentId === conversation.id}>
-								{#snippet child({ props })}
-									<a href="/{conversation.id}" {...props}>
-										{new Date(conversation.updated).toLocaleTimeString('en-US', dateOptions)}
-									</a>
-								{/snippet}
-							</Sidebar.MenuButton>
+							<ContextMenu.Root>
+								<ContextMenu.Trigger>
+									<Sidebar.MenuButton isActive={currentId === conversation.id}>
+										{#snippet child({ props })}
+											<a href="/{conversation.id}" {...props}>
+												{new Date(conversation.updated).toLocaleTimeString('en-US', dateOptions)}
+											</a>
+										{/snippet}
+									</Sidebar.MenuButton>
+								</ContextMenu.Trigger>
+								<ContextMenu.Content>
+									<ContextMenu.Item
+										onclick={async () => {
+											// Delete conversation and navigate to a new conversation if the current one was deleted
+											await fetch(`/delete/${conversation.id}`, {
+												method: 'DELETE'
+											});
+											await invalidateAll();
+											if (page.params.id && page.params.id === conversation.id) {
+												await goto('/');
+											}
+										}}
+									>
+										Delete
+									</ContextMenu.Item>
+								</ContextMenu.Content>
+							</ContextMenu.Root>
 						</Sidebar.MenuItem>
 					{/each}
 				</Sidebar.Menu>
