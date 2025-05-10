@@ -10,7 +10,8 @@
 		day: 'numeric'
 	};
 
-	let { conversations }: { conversations: Conversation[] } = $props();
+	let { conversations, currentId }: { conversations: Conversation[]; currentId?: string } =
+		$props();
 </script>
 
 <Sidebar.Root>
@@ -35,7 +36,7 @@
 				<Sidebar.Menu>
 					{#each conversations as conversation (conversation.id)}
 						<Sidebar.MenuItem>
-							<Sidebar.MenuButton>
+							<Sidebar.MenuButton isActive={currentId === conversation.id}>
 								{#snippet child({ props })}
 									<a href="/{conversation.id}" {...props}>
 										{new Date(conversation.updated).toLocaleTimeString('en-US', dateOptions)}
