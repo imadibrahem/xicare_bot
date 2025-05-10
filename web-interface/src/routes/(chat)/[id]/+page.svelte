@@ -41,7 +41,7 @@
 			text = '';
 
 			// Get the response and add it to the messages
-			const response = await fetch('/send', {
+			const response = await fetch('/message/send', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ message: query, settings: [] })

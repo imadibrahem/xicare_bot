@@ -87,7 +87,7 @@
 			text = '';
 
 			// Get the response and navigate to the new conversation
-			const response = await fetch('/send', {
+			const response = await fetch('/message/send', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({

@@ -53,7 +53,7 @@
 									<ContextMenu.Item
 										onclick={async () => {
 											// Delete conversation and navigate to a new conversation if the current one was deleted
-											await fetch(`/delete/${conversation.id}`, {
+											await fetch(`conversation/${conversation.id}/delete`, {
 												method: 'DELETE'
 											});
 											await invalidateAll();
