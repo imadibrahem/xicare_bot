@@ -14,7 +14,7 @@ An implementation of a "death bot" of Norbert Wiener using an LLM and vector sea
   - [ ] add await to message response
   - [ ] add error handing for endpoints that interact with pocketbase
   - [ ] add shortcut for message sending
-  - [ ] add clipboard copy
+  - [x] add clipboard copy
   - [ ] ? add aestetics
 - death bot
   - [ ] finetune with gemini

@@ -1,4 +1,5 @@
 import { type ClassValue, clsx } from 'clsx';
+import { toast } from 'svelte-sonner';
 import { twMerge } from 'tailwind-merge';
 
 export function cn(...inputs: ClassValue[]) {
@@ -16,6 +17,7 @@ export const copyMessagesToClipboard = (
 	);
 	try {
 		navigator.clipboard.writeText(messagesString);
+		toast('Copied to clipboard');
 	} catch (error) {
 		console.error('Failed to copy messages to clipboard:', error);
 	}
