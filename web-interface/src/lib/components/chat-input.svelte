@@ -20,6 +20,7 @@
 
 	let textarea: HTMLTextAreaElement;
 
+	// Adjust textarea so it is always as high as text
 	const adjustHeight = () => {
 		if (textarea) {
 			textarea.style.height = 'auto';

@@ -27,7 +27,6 @@
 	bind:this={ref}
 	{...rest}
 >
-	<!-- md:text-lg -->
 	<span>{text}</span>
 	<span class="text-xs opacity-80">{new Date(created).toLocaleTimeString('en-US')}</span>
 </div>

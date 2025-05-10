@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import type { Message } from '$lib/types';
 
 export const POST: RequestHandler = async ({ locals, request }) => {
+	// Get user message from request body
 	const { message, settings } = (await request.json()) as {
 		message: Message;
 		settings: { id: string; value: string }[];

@@ -50,6 +50,7 @@
 						<span><em>Can't be changed after conversation has started</em></span>
 					</div>
 					<div class="flex w-full flex-col gap-4">
+						<!--  Render settings -->
 						{#each settings as setting}
 							<div class="flex items-center gap-4">
 								<span class="grow-1 w-1/2 shrink-0 text-right">{setting.description}</span>
@@ -98,8 +99,8 @@
 				})
 			});
 			const reply = (await response.json()) as MessageType;
-			invalidateAll();
-			goto(`/${reply.conversation}`);
+			invalidateAll(); // Re-run load functions so the sidebar updates
+			setTimeout(() => goto(`/${reply.conversation}`), 0); // Fix: Wrap in timeout because otherwise it does not run
 		}}
 	/>
 </div>
