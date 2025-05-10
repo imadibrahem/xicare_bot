@@ -239,6 +239,24 @@
       },
       {
         "hidden": false,
+        "id": "bool1770424622",
+        "name": "awareness",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "bool"
+      },
+      {
+        "hidden": false,
+        "id": "bool2531863547",
+        "name": "politeness",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "bool"
+      },
+      {
+        "hidden": false,
         "id": "autodate2990389176",
         "name": "created",
         "onCreate": true,
