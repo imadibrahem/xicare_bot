@@ -27,6 +27,16 @@
 			textarea.style.height = `${textarea.scrollHeight}px`;
 		}
 	};
+
+	// Ensure onclick is defined and properly handled
+	const handleKeyDown = (event: KeyboardEvent) => {
+		if (event.key === 'Enter' && event.shiftKey) {
+			event.preventDefault(); // Prevent default behavior of Enter key
+			if (onclick) {
+				onclick();
+			}
+		}
+	};
 </script>
 
 <div
@@ -50,6 +60,7 @@
 			bind:this={textarea}
 			bind:value={text}
 			oninput={adjustHeight}
+			onkeydown={handleKeyDown}
 			rows="1"
 		></textarea>
 		<Button size="icon" class="h-8 w-8 shrink-0 self-end rounded-full" {onclick}>
