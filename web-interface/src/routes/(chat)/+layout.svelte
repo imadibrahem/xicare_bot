@@ -4,12 +4,12 @@
 	import * as Sidebar from '$lib/components/ui/sidebar/index';
 	import ChatSidebar from '$lib/components/chat-sidebar.svelte';
 
+	import { onNavigate } from '$app/navigation';
+	import { page } from '$app/state';
+	import type { SidebarState } from '$lib/components/ui/sidebar/index';
 	import type { LayoutProps } from './$types';
 
 	let { data, children }: LayoutProps = $props();
-
-	import { onNavigate } from '$app/navigation';
-	import type { SidebarState } from '$lib/components/ui/sidebar/index';
 
 	let sidebar = $state<SidebarState | null>(null);
 
@@ -22,15 +22,25 @@
 </script>
 
 <Sidebar.Provider>
-	<ChatSidebar conversations={data.conversations} />
+	<ChatSidebar conversations={data.conversations} currentId={page.params.id} />
 	<main class="relative flex min-h-screen w-full flex-col">
 		<div
-			class="bg-background border-foreground sticky top-0 z-10 flex w-full shrink-0 justify-between border-b-[1px] md:pointer-events-none md:border-none md:bg-transparent"
+			class="bg-background border-foreground sticky top-0 z-10 flex w-full shrink-0 items-center justify-between border-b-[1px] md:pointer-events-none md:border-none md:bg-transparent"
 		>
 			<Sidebar.Trigger
 				bind:sidebarObj={sidebar}
 				class="bg-background pointer-events-auto m-2 md:m-2"
 			/>
+			<!-- Show settings in top bar -->
+			{#if page.params.id}
+				{#each data.conversations.filter((conversation) => conversation.id === page.params.id) as conversation}
+					<em class="p-4 text-center text-sm md:text-base"
+						>Norbert Wiener is {!conversation.awareness ? 'not ' : ''}aware of his death and current
+						developments and {!conversation.politeness ? 'does not insist ' : 'insists '}upon
+						respect and politeness.</em
+					>
+				{/each}
+			{/if}
 			<Tooltip.Provider>
 				<Tooltip.Root>
 					<Tooltip.Trigger

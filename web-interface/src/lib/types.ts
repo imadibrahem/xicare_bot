@@ -13,4 +13,6 @@ export interface Conversation {
 	user: string;
 	created: string;
 	updated: string;
+	awareness: boolean;
+	politeness: boolean;
 }
