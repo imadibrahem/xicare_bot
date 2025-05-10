@@ -99,8 +99,8 @@
 				})
 			});
 			const reply = (await response.json()) as MessageType;
-			invalidateAll(); // Re-run load functions so the sidebar updates
-			setTimeout(() => goto(`/${reply.conversation}`), 0); // Fix: Wrap in timeout because otherwise it does not run
+			await invalidateAll();
+			await goto(`/${reply.conversation}`);
 		}}
 	/>
 </div>
