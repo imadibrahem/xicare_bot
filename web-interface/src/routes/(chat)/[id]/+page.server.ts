@@ -6,7 +6,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	return {
 		messages: (await locals.pb.collection('messages').getFullList({
 			filter: locals.pb.filter('conversation = {:id}', { id: params.id }),
-			sort: '-created'
+			sort: 'created'
 		})) as Message[]
 	};
 };
