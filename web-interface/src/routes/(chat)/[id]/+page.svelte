@@ -39,13 +39,12 @@
 		onclick={async () => {
 			// Add user message to messages and reset the textarea
 			const query = {
-				id: null,
 				conversation: page.params.id,
 				text: text,
 				role: 'user',
 				created: String(new Date())
 			} as MessageType;
-			messages.push(query);
+			messages.push({ ...query, id: self.crypto.randomUUID() });
 			text = '';
 
 			// Get the response and add it to the messages
