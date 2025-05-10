@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Message from '$lib/components/message.svelte';
 	import ChatInput from '$lib/components/chat-input.svelte';
+	import Generating from '$lib/components/generating.svelte';
 
 	import { page } from '$app/state';
 	import type { Message as MessageType } from '$lib/types';
@@ -8,7 +9,9 @@
 
 	let { data }: PageProps = $props();
 	let messages = $state(data.messages);
+
 	let text = $state('');
+	let generating = $state(false);
 
 	// Update messages when data changes (during navigation)
 	$effect(() => {
@@ -31,6 +34,9 @@
 				{#each messages as message (message.id)}
 					<Message {...message} />
 				{/each}
+				{#if generating}
+					<Generating />
+				{/if}
 			{/if}
 		</div>
 	</div>
@@ -48,12 +54,14 @@
 			text = '';
 
 			// Get the response and add it to the messages
+			generating = true;
 			const response = await fetch('/message/send', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ message: query, settings: [] })
 			});
 			const reply = (await response.json()) as MessageType;
+			generating = false;
 			messages.push(reply);
 		}}
 	/>

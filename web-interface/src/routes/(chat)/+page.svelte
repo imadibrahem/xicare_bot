@@ -2,6 +2,7 @@
 	import Message from '$lib/components/message.svelte';
 	import ChatInput from '$lib/components/chat-input.svelte';
 	import { Switch } from '$lib/components/ui/switch/index';
+	import Generating from '$lib/components/generating.svelte';
 
 	import { goto, invalidateAll } from '$app/navigation';
 	import type { Message as MessageType } from '$lib/types';
@@ -20,6 +21,7 @@
 	]);
 
 	let text = $state('');
+	let generating = $state(false);
 
 	let messages = <MessageType[]>$state([]);
 </script>
@@ -69,6 +71,9 @@
 				{#each messages as message (message.id)}
 					<Message {...message} />
 				{/each}
+				{#if generating}
+					<Generating />
+				{/if}
 			</div>
 		{/if}
 	</div>
@@ -87,6 +92,7 @@
 			text = '';
 
 			// Get the response and navigate to the new conversation
+			generating = true;
 			const response = await fetch('/message/send', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -99,6 +105,7 @@
 				})
 			});
 			const reply = (await response.json()) as MessageType;
+			generating = false;
 			await invalidateAll();
 			await goto(`/${reply.conversation}`);
 		}}
