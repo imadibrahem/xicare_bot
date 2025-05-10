@@ -20,7 +20,7 @@
 </script>
 
 <div class="container flex h-full flex-col px-0">
-	<div class="flex-1 overflow-y-auto">
+	<div class="flex-1">
 		<div
 			class="mx-4 flex h-full flex-col justify-end gap-y-4 pb-8 pt-4 md:mx-10 md:gap-y-8 md:pb-10 md:pt-0"
 		>

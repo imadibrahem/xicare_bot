@@ -27,7 +27,7 @@
 </script>
 
 <div class="container flex h-full flex-col px-0">
-	<div class="flex-1 overflow-y-auto">
+	<div class="flex-1">
 		{#if !messages.length}
 			<div class="mx-4 flex h-full flex-col items-center justify-center gap-10 py-4 md:mx-10">
 				<div class="max-w-2xl text-center">
