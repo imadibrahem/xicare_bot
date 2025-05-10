@@ -1,16 +1,16 @@
 export type Role = 'user' | 'norbert';
 
 export interface Message {
-	id: string;
-	conversation: string;
+	id: string | null;
+	conversation: string | null;
 	text: string;
 	role: Role;
-	created: Date;
+	created: string;
 }
 
 export interface Conversation {
 	id: string;
 	user: string;
-	created: Date;
-	updated: Date;
+	created: string;
+	updated: string;
 }

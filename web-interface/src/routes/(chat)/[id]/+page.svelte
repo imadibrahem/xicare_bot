@@ -2,13 +2,18 @@
 	import Message from '$lib/components/message.svelte';
 	import ChatInput from '$lib/components/chat-input.svelte';
 
+	import { page } from '$app/state';
 	import type { Message as MessageType } from '$lib/types';
-
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+	let messages = $state(data.messages);
+	let text = $state('');
 
-	const messages = <MessageType[]>$derived([...data.messages]);
+	// Update messages when data changes (during navigation)
+	$effect(() => {
+		messages = data.messages;
+	});
 </script>
 
 <div class="container flex h-full flex-col px-0">
@@ -21,5 +26,28 @@
 			{/each}
 		</div>
 	</div>
-	<ChatInput />
+	<ChatInput
+		bind:text
+		onclick={async () => {
+			// Add user message to messages and reset the textarea
+			const query = {
+				id: null,
+				conversation: page.params.id,
+				text: text,
+				role: 'user',
+				created: String(new Date())
+			} as MessageType;
+			messages.push(query);
+			text = '';
+
+			// Get the response and add it to the messages
+			const response = await fetch('/send', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ message: query, settings: [] })
+			});
+			const reply = (await response.json()) as MessageType;
+			messages.push(reply);
+		}}
+	/>
 </div>
