@@ -93,7 +93,7 @@
 	};
 	$effect(() => {
 		messages.length;
-		if (untrack(() => autoscroll)) scrollToBottom();
+		if (autoscroll) scrollToBottom();
 	});
 	afterNavigate(scrollToBottom);
 </script>

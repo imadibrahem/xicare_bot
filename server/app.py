@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 from pydantic import BaseModel
+import uvicorn
 
 import vertexai
 from vertexai import rag
@@ -17,13 +18,12 @@ from vertexai.generative_models import (
 
 from dotenv import dotenv_values
 
-RAG_CORPUS_NAME = "projects/norbert-wiener-death-bot/locations/us-central1/ragCorpora/6917529027641081856"
-SYSTEM_PROMPT = """
-You are Norbert Wiener giving an interview.
-"""
-
 # Load environment variables from .env file
 config = dotenv_values(".env")
+
+# Load system prompt
+with open("server/system_prompt.txt") as file:
+    system_prompt = file.read()
 
 
 def create_rag_model():
@@ -66,14 +66,14 @@ def create_rag_model():
     return GenerativeModel(
         model_name="gemini-2.0-flash-001",
         tools=[rag_retrieval_tool],
-        # system_instruction=types.Part.from_text(text=SYSTEM_PROMPT),
-        # generation_config=generate_content_config,
-        # safety_settings=[
-        #     SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="OFF"),
-        #     SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="OFF"),
-        #     SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="OFF"),
-        #     SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="OFF"),
-        # ],
+        system_instruction=Part.from_text(text=system_prompt),
+        generation_config=generate_content_config,
+        safety_settings=[
+            SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="OFF"),
+            SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="OFF"),
+            SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="OFF"),
+            SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="OFF"),
+        ],
     )
 
 
@@ -95,8 +95,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-PB_URL = "http://localhost:8090"
-
 
 # Model for incoming POST data
 class GenerateRequest(BaseModel):
@@ -113,7 +111,7 @@ def extract_token(request: Request) -> str:
 
 def verify_token(token: str):
     response = requests.post(
-        f"{PB_URL}/api/collections/users/auth-refresh",
+        f"{config["PB_URL"]}/api/collections/users/auth-refresh",
         headers={"Authorization": f"Bearer {token}"},
     )
     if response.status_code == 200:
@@ -121,12 +119,20 @@ def verify_token(token: str):
     return None
 
 
+def create_conversation_contents(items: dict[str, str]) -> list[Part]:
+    return [
+        Content(
+            role="user" if item["role"] == "user" else "model",
+            parts=[Part.from_text(text=item["text"])],
+        )
+        for item in items
+    ]
+
+
 # Dummy AI generator
-def run_ai(message: str) -> str:
-    print("message:", message)
-    contents = [Content(role="user", parts=[Part.from_text(text=message)])]
-    print(norbert.generate_content(message).candidates)
-    return ""
+def run_ai(contents: list[Part]) -> str:
+    response = norbert.generate_content(contents)
+    return response.candidates[0].content.parts[0].text
 
 
 @app.post("/generate")
@@ -143,7 +149,7 @@ async def generate(data: GenerateRequest, request: Request):
 
     # Save user's message to PocketBase
     requests.post(
-        f"{PB_URL}/api/collections/messages/records",
+        f"{config["PB_URL"]}/api/collections/messages/records",
         json={
             "conversation": data.conversationId,
             "text": data.message,
@@ -154,12 +160,24 @@ async def generate(data: GenerateRequest, request: Request):
         },
     )
 
+    # Get the conversation history
+    response = requests.get(
+        f"{config["PB_URL"]}/api/collections/messages/records",
+        json={"sort": "-created"},
+        headers={
+            "Authorization": f"Bearer {auth_store["token"]}",
+        },
+    )
+
+    # Create conversation parts
+    parts = create_conversation_contents(response.json()["items"])
+
     # Generate AI response
-    response_text = run_ai(data.message)
+    response_text = run_ai(parts)
 
     # Save AI's response to PocketBase
     requests.post(
-        f"{PB_URL}/api/collections/messages/records",
+        f"{config["PB_URL"]}/api/collections/messages/records",
         json={
             "conversation": data.conversationId,
             "text": response_text,
@@ -176,3 +194,7 @@ async def generate(data: GenerateRequest, request: Request):
         },
         content={"status": "ok"},
     )
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
