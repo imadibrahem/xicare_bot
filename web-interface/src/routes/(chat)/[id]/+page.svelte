@@ -9,7 +9,7 @@
 
 	import type { Message as MessageType } from '$lib/types';
 	import type { PageProps } from './$types';
-	import { afterNavigate } from '$app/navigation';
+	import { afterNavigate, goto } from '$app/navigation';
 	import { currentUser } from '$lib/pocketbase.svelte';
 
 	let { data }: PageProps = $props();
@@ -18,14 +18,36 @@
 	let text = $state('');
 	let generating = $state(false);
 
+	const generateResponse = async (message: string | null = null) => {
+		// Get user message and reset the textarea
+		let messageText = '';
+		if (message) messageText = message;
+		else {
+			messageText = text;
+			text = '';
+		}
+
+		// Send message to generation endpoint with JWT
+		generating = true;
+		await fetch('http://127.0.0.1:8000/generate', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${currentUser.token}`
+			},
+			body: JSON.stringify({ conversationId: page.params.id, message: messageText })
+		});
+		generating = false;
+	};
+
 	// Update messages when data changes (during navigation)
 	$effect(() => {
 		messages = data.messages;
 	});
 
-	// Add pocketbase subscriber for messages
 	let unsubscribe: () => void;
 	onMount(async () => {
+		// Add pocketbase subscriber for messages
 		unsubscribe = await pb
 			.collection('messages')
 			.subscribe<MessageType>('*', async ({ action, record }) => {
@@ -41,6 +63,15 @@
 					messages = messages.filter((message) => message.id !== record.id);
 				}
 			});
+
+		// If page get's initialized with a message, send that one off
+		const message = page.url.searchParams.get('message');
+		if (message) {
+			console.log(page.url.pathname);
+			await goto(page.url.pathname);
+			console.log(message);
+			generateResponse(message);
+		}
 	});
 	// Unsubscribe on dismounting component
 	onDestroy(() => {
@@ -82,22 +113,8 @@
 	</div>
 	<ChatInput
 		bind:text
-		onclick={async () => {
-			// Get user message and reset the textarea
-			const message = text;
-			text = '';
-
-			// Send message to generation endpoint with JWT
-			generating = true;
-			await fetch('http://127.0.0.1:8000/generate', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${currentUser.token}`
-				},
-				body: JSON.stringify({ conversationId: page.params.id, message: message })
-			});
-			generating = false;
+		onclick={() => {
+			generateResponse();
 		}}
 	/>
 </div>
