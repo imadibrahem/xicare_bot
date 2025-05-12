@@ -2,8 +2,8 @@ import click
 from dotenv import dotenv_values
 from google import genai
 from google.genai import types
-import os
 from pathlib import Path
+import re
 
 # Load environment variables from .env file
 config = dotenv_values(".env")
@@ -11,18 +11,18 @@ config = dotenv_values(".env")
 
 # fmt: off
 @click.command()
+@click.argument("input_file", type=click.Path(exists=True, dir_okay=False))
 @click.option("--model", "-m", default="gemini-2.0-flash-001", help="LLM model to use")
 @click.option("--output-file", "-o", type=click.Path(), help="Output file path (defaults to input_file with _corrected suffix)")
 @click.option("--input-price", "-ip", default=0.15, type=float, help="Price for 1M input text tokens in US$")
 @click.option("--output-price", "-op", default=0.60, type=float, help="Price for 1M output text tokens in US$")
-@click.argument("input_file", type=click.Path(exists=True, readable=True))
 # fmt: on
 def correct_ocr(
+    input_file: str,
     model: str,
     output_file: str,
     input_price: float,
     output_price: float,
-    input_file: str,
 ):
     """Correct OCR errors in a markdown file using Google's Gemini models."""
 
@@ -38,7 +38,7 @@ def correct_ocr(
         vertexai=True, project=config["PROJECT_ID"], location=config["LOCATION"]
     )
 
-    si_text1 = """
+    system_prompt = """
 You are a text corrector who fixes errors that occurred during OCR. You will get text chunks of markdown and respond with the corrected versions, keeping the markdown formatting intact.
 
 Most common errors are:
@@ -47,7 +47,9 @@ Most common errors are:
 - Characters like \"l\" or \"i\" that sometimes got misread by the OCR as \"!\" (e.g., \"G!bbs\", which you will correct to \"Gibbs\")
 - Charactlers like \"l\" that got misread as \"i\" (e.g., \"guii\", which you will correct to \"Gull\")
 - Characters like \"-\" that got misinterpreted as * (or \\* in markdown notation)
+- Character groups like \"fi\" that got misinterpreted as \"£\"
 - Incorrect spacing between quotation marks and text (e.g., \"' thickness '\", which you will correct to \"'thickness'\")
+- Weird characters like e.g. \"·\" are left between words, because of marks on the page that were scanned and interpreted as writing
 """
 
     generate_content_config = types.GenerateContentConfig(
@@ -65,7 +67,7 @@ Most common errors are:
             ),
             types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="OFF"),
         ],
-        system_instruction=[types.Part.from_text(text=si_text1)],
+        system_instruction=[types.Part.from_text(text=system_prompt)],
     )
 
     # Read the input markdown file
@@ -79,7 +81,7 @@ Most common errors are:
     # Count system prompt tokens
     # Create content for the request
     contents = [
-        types.Content(role="system", parts=[types.Part.from_text(text=si_text1)])
+        types.Content(role="system", parts=[types.Part.from_text(text=system_prompt)])
     ]
 
     # Call the API to count the system prompt tokens
@@ -159,13 +161,18 @@ Most common errors are:
                     contents=contents,
                     config=generate_content_config,
                 )
-                corrected_paragraphs.append(response.text)
+                corrected_paragraphs.append(response.text.strip())
             except Exception as e:
                 click.echo(f"Error processing paragraph: {e}")
-                corrected_paragraphs.append(paragraph)  # Use original on failure
+                corrected_paragraphs.append(
+                    paragraph.strip()
+                )  # Use original on failure
 
     # Join the corrected paragraphs back together
     corrected_text = "\n\n".join(corrected_paragraphs)
+
+    # remove excess newlines
+    corrected_text = re.sub(r"\n{3,}", "\n\n", corrected_text)
 
     # Save the result to the output file
     with open(output_file, "w", encoding="utf-8") as f:
