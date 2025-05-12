@@ -3,11 +3,14 @@
 	import ChatInput from '$lib/components/chat-input.svelte';
 	import Generating from '$lib/components/generating.svelte';
 
-	import { untrack } from 'svelte';
+	import { onDestroy, onMount, untrack } from 'svelte';
 	import { page } from '$app/state';
+	import { pb } from '$lib/pocketbase.svelte';
+
 	import type { Message as MessageType } from '$lib/types';
 	import type { PageProps } from './$types';
 	import { afterNavigate } from '$app/navigation';
+	import { currentUser } from '$lib/pocketbase.svelte';
 
 	let { data }: PageProps = $props();
 	let messages = $state(data.messages);
@@ -18,6 +21,30 @@
 	// Update messages when data changes (during navigation)
 	$effect(() => {
 		messages = data.messages;
+	});
+
+	// Add pocketbase subscriber for messages
+	let unsubscribe: () => void;
+	onMount(async () => {
+		unsubscribe = await pb
+			.collection('messages')
+			.subscribe<MessageType>('*', async ({ action, record }) => {
+				if (action === 'create') {
+					messages.push({
+						id: record.id,
+						conversation: record.conversation,
+						text: record.text,
+						role: record.role,
+						created: record.created
+					});
+				} else if (action === 'delete') {
+					messages = messages.filter((message) => message.id !== record.id);
+				}
+			});
+	});
+	// Unsubscribe on dismounting component
+	onDestroy(() => {
+		unsubscribe();
 	});
 
 	let windowScrollY = $state(0);
@@ -56,27 +83,21 @@
 	<ChatInput
 		bind:text
 		onclick={async () => {
-			// TODO
-			// Add user message to messages and reset the textarea
-			const query = {
-				conversation: page.params.id,
-				text: text,
-				role: 'user',
-				created: String(new Date())
-			} as MessageType;
-			messages.push({ ...query, id: self.crypto.randomUUID() });
+			// Get user message and reset the textarea
+			const message = text;
 			text = '';
 
-			// Get the response and add it to the messages
+			// Send message to generation endpoint with JWT
 			generating = true;
-			const response = await fetch('/message/send', {
+			await fetch('http://127.0.0.1:8000/generate', {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ message: query, settings: [] })
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${currentUser.token}`
+				},
+				body: JSON.stringify({ conversationId: page.params.id, message: message })
 			});
-			const reply = (await response.json()) as MessageType;
 			generating = false;
-			messages.push(reply);
 		}}
 	/>
 </div>

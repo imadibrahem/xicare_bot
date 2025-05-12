@@ -4,8 +4,9 @@
 	import Plus from '@lucide/svelte/icons/plus';
 
 	import { page } from '$app/state';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto } from '$app/navigation';
 	import { pb } from '$lib/pocketbase.svelte';
+
 	import type { Conversation } from '$lib/types';
 
 	const dateOptions: Intl.DateTimeFormatOptions = {
@@ -35,7 +36,6 @@
 	const deleteConversation = async (id: string) => {
 		// Delete conversation and navigate to a new conversation if the current one was deleted
 		await pb.collection('conversations').delete(id);
-		await invalidateAll();
 		if (page.params.id && page.params.id === id) {
 			await goto('/');
 		}
