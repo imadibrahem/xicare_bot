@@ -287,7 +287,7 @@
     "viewRule": null,
     "createRule": "conversation.user = @request.auth.id",
     "updateRule": null,
-    "deleteRule": null,
+    "deleteRule": "conversation.user = @request.auth.id",
     "name": "messages",
     "type": "base",
     "fields": [
@@ -314,7 +314,7 @@
         "minSelect": 0,
         "name": "conversation",
         "presentable": false,
-        "required": false,
+        "required": true,
         "system": false,
         "type": "relation"
       },
