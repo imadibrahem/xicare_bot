@@ -1,42 +1,74 @@
-import click
-from dotenv import dotenv_values
-from vertexai import rag
-import vertexai
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import JSONResponse
+import requests
+from pydantic import BaseModel
 
-# Load environment variables from .env file
-config = dotenv_values(".env")
+app = FastAPI()
+
+PB_URL = "http://localhost:8090"
 
 
-# fmt: off
-@click.command()
-# fmt: on
-def awaken_norbert() -> None:
-    # Initialize Vertex AI with project and location from config
-    vertexai.init(project=config["PROJECT_ID"], location=config["LOCATION"])
+# Example model for the incoming POST body
+class GenerateRequest(BaseModel):
+    conversationId: str
+    message: str
 
-    rag_corpus = rag.get_corpus(config["RAG_CORPUS"])
 
-    # TODO
-    query = "What is your earliest memory?"
-    # query = "Thank you that is very interesting and gives me things to think about. I wonder how that relates to robotics as well. Now please a different topic. Could you tell me of your earliest memory?"
+# Dummy implementation — replace with real token check
+def extract_token(request: Request) -> str:
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        return auth_header[len("Bearer ") :]
+    return None
 
-    # Direct context retrieval
-    rag_retrieval_config = rag.RagRetrievalConfig(
-        top_k=10,  # Optional
-        filter=rag.Filter(vector_distance_threshold=0.5),  # Optional
+
+def verify_token(token: str):
+    response = requests.get(
+        f"{PB_URL}/api/users/auth-refresh", headers={"Authorization": f"Bearer {token}"}
     )
-    results = rag.retrieval_query(
-        rag_resources=[
-            rag.RagResource(
-                rag_corpus=rag_corpus.name,
-            )
-        ],
-        text=query,
-        rag_retrieval_config=rag_retrieval_config,
+    if response.status_code == 200:
+        return response.json()
+    return None
+
+
+# Dummy AI generator
+def run_ai(message: str) -> str:
+    return f"Echo: {message}"
+
+
+@app.post("/generate")
+async def generate(data: GenerateRequest, request: Request):
+    token = extract_token(request)
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing token")
+
+    auth_store = verify_token(token)
+    if not auth_store:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    # Save user's message to PocketBase
+    requests.post(
+        f"{PB_URL}/api/collections/messages/records",
+        json={
+            "conversation": data.conversationId,
+            "text": data.message,
+            "role": "user",
+        },
+        headers={"Authorization": f"Bearer {auth_store["token"]}"},
     )
 
-    click.echo(results)
+    # Generate AI response
+    response_text = run_ai(data.message)
 
+    # Save AI's response to PocketBase
+    requests.post(
+        f"{PB_URL}/api/collections/messages/records",
+        json={
+            "conversation": data.conversationId,
+            "text": response_text,
+            "role": "norbert",
+        },
+        headers={"Authorization": f"Bearer {auth_store["token"]}"},
+    )
 
-if __name__ == "__main__":
-    awaken_norbert()
+    return JSONResponse(content={"status": "ok"})
