@@ -80,6 +80,7 @@
 	<ChatInput
 		bind:text
 		onclick={async () => {
+			// TODO
 			// Add user message to messages and reset the textarea
 			const query = {
 				id: null,

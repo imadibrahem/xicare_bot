@@ -3,9 +3,10 @@
 	import * as ContextMenu from '$lib/components/ui/context-menu/index';
 	import Plus from '@lucide/svelte/icons/plus';
 
-	import { goto, invalidateAll } from '$app/navigation';
-	import type { Conversation } from '$lib/types';
 	import { page } from '$app/state';
+	import { goto, invalidateAll } from '$app/navigation';
+	import { pb } from '$lib/pocketbase.svelte';
+	import type { Conversation } from '$lib/types';
 
 	const dateOptions: Intl.DateTimeFormatOptions = {
 		year: 'numeric',
@@ -16,14 +17,29 @@
 	let {
 		conversations,
 		currentId,
-		error,
-		sidebar = $bindable(null)
+		sidebar = $bindable(null),
+		onlogout
 	}: {
 		conversations: Conversation[];
 		currentId?: string;
-		error?: unknown;
 		sidebar?: any;
+		onlogout?: () => void;
 	} = $props();
+
+	const logout = () => {
+		pb.authStore.clear();
+
+		if (onlogout) onlogout();
+	};
+
+	const deleteConversation = async (id: string) => {
+		// Delete conversation and navigate to a new conversation if the current one was deleted
+		await pb.collection('conversations').delete(id);
+		await invalidateAll();
+		if (page.params.id && page.params.id === id) {
+			await goto('/');
+		}
+	};
 </script>
 
 <Sidebar.Root bind:sidebarObj={sidebar}>
@@ -43,48 +59,33 @@
 	</Sidebar.Header>
 	<Sidebar.Content>
 		<Sidebar.Group>
-			{#if error}
-				<span class="text-sm text-red-800"
-					><strong>Error loading conversations:</strong> {error}</span
-				>
-			{:else}
-				<Sidebar.GroupLabel>Conversations</Sidebar.GroupLabel>
-				<Sidebar.GroupContent>
-					<Sidebar.Menu>
-						{#each conversations as conversation (conversation.id)}
-							<Sidebar.MenuItem>
-								<ContextMenu.Root>
-									<ContextMenu.Trigger>
-										<Sidebar.MenuButton isActive={currentId === conversation.id}>
-											{#snippet child({ props })}
-												<a href="/{conversation.id}" {...props}>
-													{new Date(conversation.updated).toLocaleTimeString('en-US', dateOptions)}
-												</a>
-											{/snippet}
-										</Sidebar.MenuButton>
-									</ContextMenu.Trigger>
-									<ContextMenu.Content>
-										<ContextMenu.Item
-											onclick={async () => {
-												// Delete conversation and navigate to a new conversation if the current one was deleted
-												await fetch(`conversation/${conversation.id}/delete`, {
-													method: 'DELETE'
-												});
-												await invalidateAll();
-												if (page.params.id && page.params.id === conversation.id) {
-													await goto('/');
-												}
-											}}
-										>
-											Delete
-										</ContextMenu.Item>
-									</ContextMenu.Content>
-								</ContextMenu.Root>
-							</Sidebar.MenuItem>
-						{/each}
-					</Sidebar.Menu>
-				</Sidebar.GroupContent>
-			{/if}
+			<Sidebar.GroupLabel>Conversations</Sidebar.GroupLabel>
+			<Sidebar.GroupContent>
+				<Sidebar.Menu>
+					{#each conversations as conversation (conversation.id)}
+						<Sidebar.MenuItem>
+							<ContextMenu.Root>
+								<ContextMenu.Trigger>
+									<Sidebar.MenuButton isActive={currentId === conversation.id}>
+										{#snippet child({ props })}
+											<a href="/{conversation.id}" {...props}>
+												{new Date(conversation.updated).toLocaleTimeString('en-US', dateOptions)}
+											</a>
+										{/snippet}
+									</Sidebar.MenuButton>
+								</ContextMenu.Trigger>
+								<ContextMenu.Content>
+									<ContextMenu.Item
+										onclick={() => {
+											deleteConversation(conversation.id);
+										}}>Delete</ContextMenu.Item
+									>
+								</ContextMenu.Content>
+							</ContextMenu.Root>
+						</Sidebar.MenuItem>
+					{/each}
+				</Sidebar.Menu>
+			</Sidebar.GroupContent>
 		</Sidebar.Group>
 	</Sidebar.Content>
 	<Sidebar.Footer>
@@ -97,9 +98,7 @@
 				</Sidebar.MenuButton>
 			</Sidebar.MenuItem>
 			<Sidebar.MenuItem>
-				<form action="/logout" method="POST">
-					<Sidebar.MenuButton>Log out</Sidebar.MenuButton>
-				</form>
+				<Sidebar.MenuButton onclick={logout}>Log out</Sidebar.MenuButton>
 			</Sidebar.MenuItem>
 		</Sidebar.Menu>
 	</Sidebar.Footer>

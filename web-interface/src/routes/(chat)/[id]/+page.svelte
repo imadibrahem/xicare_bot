@@ -3,7 +3,7 @@
 	import ChatInput from '$lib/components/chat-input.svelte';
 	import Generating from '$lib/components/generating.svelte';
 
-	import { onMount, untrack } from 'svelte';
+	import { untrack } from 'svelte';
 	import { page } from '$app/state';
 	import type { Message as MessageType } from '$lib/types';
 	import type { PageProps } from './$types';
@@ -45,25 +45,18 @@
 		<div
 			class="mx-4 flex h-full flex-col justify-end gap-y-4 pb-8 pt-4 md:mx-10 md:gap-y-8 md:pb-10 md:pt-0"
 		>
-			{#if data.error}
-				<div class="flex h-full items-center justify-center">
-					<span class="text-lg text-red-800"
-						><strong>Error loading messages:</strong> {data.error}</span
-					>
-				</div>
-			{:else}
-				{#each messages as message (message.id)}
-					<Message {...message} />
-				{/each}
-				{#if generating}
-					<Generating />
-				{/if}
+			{#each messages as message (message.id)}
+				<Message {...message} />
+			{/each}
+			{#if generating}
+				<Generating />
 			{/if}
 		</div>
 	</div>
 	<ChatInput
 		bind:text
 		onclick={async () => {
+			// TODO
 			// Add user message to messages and reset the textarea
 			const query = {
 				conversation: page.params.id,

@@ -20,7 +20,7 @@
 		variant?: 'sidebar' | 'floating' | 'inset';
 		collapsible?: 'offcanvas' | 'icon' | 'none';
 	} & {
-		sidebarObj?: any; // Add to type definition
+		sidebarObj: any; // Add to type definition
 	} = $props();
 
 	const sidebar = useSidebar();

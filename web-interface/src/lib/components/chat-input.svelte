@@ -63,6 +63,7 @@
 			onkeydown={handleKeyDown}
 			rows="1"
 		></textarea>
+		<!-- TODO -->
 		<Button size="icon" class="h-8 w-8 shrink-0 self-end rounded-full" {onclick}>
 			<ArrowUp />
 		</Button>

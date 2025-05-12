@@ -3,11 +3,22 @@
 	import Copy from '@lucide/svelte/icons/clipboard-copy';
 	import * as Sidebar from '$lib/components/ui/sidebar/index';
 
+	import { page } from '$app/state';
+	import { pb } from '$lib/pocketbase.svelte';
 	import { copyMessagesToClipboard } from '$lib/utils';
 
-	import type { Conversation } from '$lib/types';
+	import type { Conversation, Message } from '$lib/types';
 
 	let { conversation }: { conversation?: Conversation } = $props();
+
+	const copy = async () => {
+		copyMessagesToClipboard(
+			(await pb.collection('messages').getFullList({
+				filter: pb.filter('conversation = {:id}', { id: page.params.id }),
+				sort: 'created'
+			})) as Message[]
+		);
+	};
 </script>
 
 <div
@@ -25,12 +36,7 @@
 			<Tooltip.Root>
 				<Tooltip.Trigger
 					class="bg-background ring-offset-background focus-visible:ring-ring hover:bg-accent hover:text-accent-foreground pointer-events-auto m-2 inline-flex h-7 w-7 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 md:m-2 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"
-					onclick={async () => {
-						// Fetch all messages
-						const response = await fetch(`conversation/${conversation.id}/list`);
-						const reply = await response.json();
-						copyMessagesToClipboard(reply);
-					}}
+					onclick={copy}
 				>
 					<Copy />
 				</Tooltip.Trigger>

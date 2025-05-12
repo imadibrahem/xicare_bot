@@ -2,7 +2,7 @@
 	import * as Sidebar from '$lib/components/ui/sidebar/index';
 	import ChatSidebar from '$lib/components/chat-sidebar.svelte';
 
-	import { onNavigate } from '$app/navigation';
+	import { goto, onNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import type { SidebarState } from '$lib/components/ui/sidebar/index';
 	import type { LayoutProps } from './$types';
@@ -23,9 +23,11 @@
 <Sidebar.Provider>
 	<ChatSidebar
 		conversations={data.conversations}
-		error={data.error}
 		currentId={page.params.id}
 		bind:sidebar
+		onlogout={() => {
+			goto('/login');
+		}}
 	/>
 	<main class="relative flex min-h-screen w-full flex-col">
 		<ChatHeader
