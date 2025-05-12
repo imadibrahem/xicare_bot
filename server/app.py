@@ -28,7 +28,6 @@ class GenerateRequest(BaseModel):
     message: str
 
 
-# Dummy implementation — replace with real token check
 def extract_token(request: Request) -> str:
     auth_header = request.headers.get("Authorization")
     if auth_header and auth_header.startswith("Bearer "):
@@ -53,13 +52,13 @@ def run_ai(message: str) -> str:
 
 @app.post("/generate")
 async def generate(data: GenerateRequest, request: Request):
+    # Extract token from request header
     token = extract_token(request)
-    print("Token:", token)
     if not token:
         raise HTTPException(status_code=401, detail="Missing token")
 
+    # refresh auth with token (generates new token)
     auth_store = verify_token(token)
-    print("Auth store:", auth_store)
     if not auth_store:
         raise HTTPException(status_code=401, detail="Invalid token")
 
@@ -90,6 +89,7 @@ async def generate(data: GenerateRequest, request: Request):
         headers={"Authorization": f"Bearer {auth_store["token"]}"},
     )
 
+    # Return generated message with new token
     return JSONResponse(
         headers={
             "Authorization": f"Bearer {auth_store["token"]}",
