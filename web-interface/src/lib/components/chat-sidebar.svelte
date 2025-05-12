@@ -16,11 +16,17 @@
 	let {
 		conversations,
 		currentId,
-		error
-	}: { conversations: Conversation[]; currentId?: string; error?: unknown } = $props();
+		error,
+		sidebar = $bindable(null)
+	}: {
+		conversations: Conversation[];
+		currentId?: string;
+		error?: unknown;
+		sidebar?: any;
+	} = $props();
 </script>
 
-<Sidebar.Root>
+<Sidebar.Root bind:sidebarObj={sidebar}>
 	<Sidebar.Header>
 		<Sidebar.Menu>
 			<Sidebar.MenuItem class="mt-4 md:mt-8">

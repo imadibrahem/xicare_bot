@@ -23,15 +23,17 @@
 </script>
 
 <Sidebar.Provider>
-	<ChatSidebar conversations={data.conversations} error={data.error} currentId={page.params.id} />
+	<ChatSidebar
+		conversations={data.conversations}
+		error={data.error}
+		currentId={page.params.id}
+		bind:sidebar
+	/>
 	<main class="relative flex h-screen w-full flex-col overflow-auto">
 		<div
 			class="from-background sticky top-0 z-10 flex w-full shrink-0 items-start justify-between bg-gradient-to-b from-60% to-transparent md:pointer-events-none"
 		>
-			<Sidebar.Trigger
-				bind:sidebarObj={sidebar}
-				class="bg-background pointer-events-auto m-2 md:m-2"
-			/>
+			<Sidebar.Trigger class="bg-background pointer-events-auto m-2 md:m-2" />
 			<!-- Show settings in top bar -->
 			{#if page.params.id}
 				{#each data.conversations.filter((conversation) => conversation.id === page.params.id) as conversation}
