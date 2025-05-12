@@ -1,5 +1,4 @@
 <script lang="ts">
-	import ChatHeader from '$lib/components/chat-header.svelte';
 	import Message from '$lib/components/message.svelte';
 	import ChatInput from '$lib/components/chat-input.svelte';
 	import Generating from '$lib/components/generating.svelte';
@@ -20,80 +19,65 @@
 		messages = data.messages;
 	});
 
-	let autoscroll = true;
-	let scrollContainer: HTMLElement;
-	let messageContainer: HTMLElement;
+	let windowScrollY = $state(0);
+	let windowHeight = $state(0);
+	let documentHeight = $state(0);
 	// Check scroll position before update (enable autoscrolling, if is at the bottom)
-	$effect.pre(() => {
-		messages.length;
-
-		if (scrollContainer && messageContainer) {
-			autoscroll =
-				scrollContainer.offsetHeight + scrollContainer.scrollTop >=
-				messageContainer.offsetHeight - 20;
-		}
-	});
+	let autoscroll = $derived(windowHeight + windowScrollY >= documentHeight - 20);
 	// Autoscroll to the bottom when new message comes in
 	$effect(() => {
 		messages.length;
-
-		if (scrollContainer && messageContainer && autoscroll) {
-			scrollContainer.scrollTo(0, scrollContainer.scrollHeight);
-		}
+		if (untrack(() => autoscroll)) window.scrollTo(0, documentHeight);
 	});
 </script>
 
-<main class="relative flex h-screen w-full flex-col overflow-auto" bind:this={scrollContainer}>
-	<ChatHeader
-		conversation={data.conversations.find((conversation) => page.params.id === conversation.id)}
-	/>
-	<div class="flex-1">
-		<div class="container flex h-full flex-col px-0" bind:this={messageContainer}>
-			<div class="flex-1">
-				<div
-					class="mx-4 flex h-full flex-col justify-end gap-y-4 pb-8 pt-4 md:mx-10 md:gap-y-8 md:pb-10 md:pt-0"
-				>
-					{#if data.error}
-						<div class="flex h-full items-center justify-center">
-							<span class="text-lg text-red-800"
-								><strong>Error loading messages:</strong> {data.error}</span
-							>
-						</div>
-					{:else}
-						{#each messages as message (message.id)}
-							<Message {...message} />
-						{/each}
-						{#if generating}
-							<Generating />
-						{/if}
-					{/if}
-				</div>
-			</div>
-			<ChatInput
-				bind:text
-				onclick={async () => {
-					// Add user message to messages and reset the textarea
-					const query = {
-						conversation: page.params.id,
-						text: text,
-						role: 'user',
-						created: String(new Date())
-					} as MessageType;
-					messages.push({ ...query, id: self.crypto.randomUUID() });
-					text = '';
+<svelte:window bind:scrollY={windowScrollY} bind:innerHeight={windowHeight} />
+<svelte:body bind:offsetHeight={documentHeight} />
 
-					// Get the response and add it to the messages
-					generating = true;
-					const response = await fetch('/message/send', {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ message: query, settings: [] })
-					});
-					const reply = (await response.json()) as MessageType;
-					generating = false;
-					messages.push(reply);
-				}}
-			/>
+<div class="container flex h-full flex-col px-0">
+	<div class="flex-1">
+		<div
+			class="mx-4 flex h-full flex-col justify-end gap-y-4 pb-8 pt-4 md:mx-10 md:gap-y-8 md:pb-10 md:pt-0"
+		>
+			{#if data.error}
+				<div class="flex h-full items-center justify-center">
+					<span class="text-lg text-red-800"
+						><strong>Error loading messages:</strong> {data.error}</span
+					>
+				</div>
+			{:else}
+				{#each messages as message (message.id)}
+					<Message {...message} />
+				{/each}
+				{#if generating}
+					<Generating />
+				{/if}
+			{/if}
 		</div>
 	</div>
-</main>
+	<ChatInput
+		bind:text
+		onclick={async () => {
+			// Add user message to messages and reset the textarea
+			const query = {
+				conversation: page.params.id,
+				text: text,
+				role: 'user',
+				created: String(new Date())
+			} as MessageType;
+			messages.push({ ...query, id: self.crypto.randomUUID() });
+			text = '';
+
+			// Get the response and add it to the messages
+			generating = true;
+			const response = await fetch('/message/send', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ message: query, settings: [] })
+			});
+			const reply = (await response.json()) as MessageType;
+			generating = false;
+			messages.push(reply);
+		}}
+	/>
+</div>

@@ -6,6 +6,7 @@
 	import { page } from '$app/state';
 	import type { SidebarState } from '$lib/components/ui/sidebar/index';
 	import type { LayoutProps } from './$types';
+	import ChatHeader from '$lib/components/chat-header.svelte';
 
 	let { data, children }: LayoutProps = $props();
 
@@ -26,5 +27,12 @@
 		currentId={page.params.id}
 		bind:sidebar
 	/>
-	{@render children()}
+	<main class="relative flex h-screen w-full flex-col overflow-auto">
+		<ChatHeader
+			conversation={data.conversations.find((conversation) => page.params.id === conversation.id)}
+		/>
+		<div class="flex-1">
+			{@render children()}
+		</div>
+	</main>
 </Sidebar.Provider>
