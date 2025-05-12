@@ -174,9 +174,9 @@ cython_debug/
 
 # Repo
 out
-/token-*.json
+token-*.json
 
 # Pocketbase
-/pocketbase
-/pb_data
-/pb_migrations
+pocketbase
+pb_data
+pb_migrations

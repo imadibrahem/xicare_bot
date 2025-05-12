@@ -32,7 +32,7 @@
             "name": "correct ocr",
             "type": "debugpy",
             "request": "launch",
-            "program": "data_processing/correct_ocr.py",
+            "program": "server/data_processing/correct_ocr.py",
             "console": "integratedTerminal",
             "args": [
                 "out/norbert-wiener-books/books/Cybernetics_shortened.md"
@@ -42,7 +42,7 @@
             "name": "create chat dataset",
             "type": "debugpy",
             "request": "launch",
-            "program": "data_processing/create_chat_dataset.py",
+            "program": "server/data_processing/create_chat_dataset.py",
             "console": "integratedTerminal",
             "args": [
                 "out/norbert-wiener-books/articles/Interview_Man_and_Machine.md",
