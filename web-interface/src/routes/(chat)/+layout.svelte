@@ -24,9 +24,9 @@
 
 <Sidebar.Provider>
 	<ChatSidebar conversations={data.conversations} error={data.error} currentId={page.params.id} />
-	<main class="relative flex min-h-screen w-full flex-col">
+	<main class="relative flex h-screen w-full flex-col overflow-auto">
 		<div
-			class="bg-background border-foreground sticky top-0 z-10 flex w-full shrink-0 items-center justify-between border-b-[1px] md:pointer-events-none md:border-none md:bg-transparent"
+			class="from-background sticky top-0 z-10 flex w-full shrink-0 items-start justify-between bg-gradient-to-b from-60% to-transparent md:pointer-events-none"
 		>
 			<Sidebar.Trigger
 				bind:sidebarObj={sidebar}
