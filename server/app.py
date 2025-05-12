@@ -1,14 +1,28 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 import requests
 from pydantic import BaseModel
 
+# Initializing FastAPI with CORS
 app = FastAPI()
+
+origins = [
+    "http://localhost:5173",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 PB_URL = "http://localhost:8090"
 
 
-# Example model for the incoming POST body
+# Model for incoming POST data
 class GenerateRequest(BaseModel):
     conversationId: str
     message: str
@@ -23,8 +37,9 @@ def extract_token(request: Request) -> str:
 
 
 def verify_token(token: str):
-    response = requests.get(
-        f"{PB_URL}/api/users/auth-refresh", headers={"Authorization": f"Bearer {token}"}
+    response = requests.post(
+        f"{PB_URL}/api/collections/users/auth-refresh",
+        headers={"Authorization": f"Bearer {token}"},
     )
     if response.status_code == 200:
         return response.json()
@@ -39,10 +54,12 @@ def run_ai(message: str) -> str:
 @app.post("/generate")
 async def generate(data: GenerateRequest, request: Request):
     token = extract_token(request)
+    print("Token:", token)
     if not token:
         raise HTTPException(status_code=401, detail="Missing token")
 
     auth_store = verify_token(token)
+    print("Auth store:", auth_store)
     if not auth_store:
         raise HTTPException(status_code=401, detail="Invalid token")
 
@@ -54,7 +71,9 @@ async def generate(data: GenerateRequest, request: Request):
             "text": data.message,
             "role": "user",
         },
-        headers={"Authorization": f"Bearer {auth_store["token"]}"},
+        headers={
+            "Authorization": f"Bearer {auth_store["token"]}",
+        },
     )
 
     # Generate AI response
@@ -71,4 +90,10 @@ async def generate(data: GenerateRequest, request: Request):
         headers={"Authorization": f"Bearer {auth_store["token"]}"},
     )
 
-    return JSONResponse(content={"status": "ok"})
+    return JSONResponse(
+        headers={
+            "Authorization": f"Bearer {auth_store["token"]}",
+            "Access-Control-Expose-Headers": "Authorization",
+        },
+        content={"status": "ok"},
+    )

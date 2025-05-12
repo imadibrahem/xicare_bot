@@ -34,6 +34,14 @@
 	};
 
 	const deleteConversation = async (id: string) => {
+		// Delete all messages in conversation
+		const records = await pb.collection('messages').getFullList();
+		const messagesToDelete = records.filter((record) => record.conversation === id);
+		if (messagesToDelete.length > 0) {
+			await Promise.all(
+				messagesToDelete.map((record) => pb.collection('messages').delete(record.id))
+			);
+		}
 		// Delete conversation and navigate to a new conversation if the current one was deleted
 		await pb.collection('conversations').delete(id);
 		if (page.params.id && page.params.id === id) {

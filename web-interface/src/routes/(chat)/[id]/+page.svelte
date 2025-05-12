@@ -29,7 +29,7 @@
 
 		// Send message to generation endpoint with JWT
 		generating = true;
-		await fetch('http://127.0.0.1:8000/generate', {
+		const response = await fetch('http://127.0.0.1:8000/generate', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -38,6 +38,11 @@
 			body: JSON.stringify({ conversationId: page.params.id, message: messageText })
 		});
 		generating = false;
+		const token = response.headers.get('Authorization');
+		if (token) {
+			pb.authStore.save(token.slice('Bearer '.length));
+			pb.collection('users').authRefresh();
+		}
 	};
 
 	// Update messages when data changes (during navigation)
@@ -67,9 +72,7 @@
 		// If page get's initialized with a message, send that one off
 		const message = page.url.searchParams.get('message');
 		if (message) {
-			console.log(page.url.pathname);
 			await goto(page.url.pathname);
-			console.log(message);
 			generateResponse(message);
 		}
 	});
