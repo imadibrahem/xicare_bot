@@ -27,7 +27,7 @@
 		currentId={page.params.id}
 		bind:sidebar
 	/>
-	<main class="relative flex h-screen w-full flex-col overflow-auto">
+	<main class="relative flex min-h-screen w-full flex-col">
 		<ChatHeader
 			conversation={data.conversations.find((conversation) => page.params.id === conversation.id)}
 		/>

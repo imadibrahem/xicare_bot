@@ -3,10 +3,11 @@
 	import ChatInput from '$lib/components/chat-input.svelte';
 	import Generating from '$lib/components/generating.svelte';
 
-	import { untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { page } from '$app/state';
 	import type { Message as MessageType } from '$lib/types';
 	import type { PageProps } from './$types';
+	import { afterNavigate } from '$app/navigation';
 
 	let { data }: PageProps = $props();
 	let messages = $state(data.messages);
@@ -21,14 +22,19 @@
 
 	let windowScrollY = $state(0);
 	let windowHeight = $state(0);
-	let documentHeight = $state(0);
+	// svelte-ignore non_reactive_update
+	let documentHeight = 0;
 	// Check scroll position before update (enable autoscrolling, if is at the bottom)
 	let autoscroll = $derived(windowHeight + windowScrollY >= documentHeight - 20);
 	// Autoscroll to the bottom when new message comes in
+	const scrollToBottom = () => {
+		window.scrollTo(0, documentHeight);
+	};
 	$effect(() => {
 		messages.length;
-		if (untrack(() => autoscroll)) window.scrollTo(0, documentHeight);
+		if (untrack(() => autoscroll)) scrollToBottom();
 	});
+	afterNavigate(scrollToBottom);
 </script>
 
 <svelte:window bind:scrollY={windowScrollY} bind:innerHeight={windowHeight} />
