@@ -56,8 +56,8 @@
 		{conversations}
 		currentId={page.params.id}
 		bind:sidebar
-		onlogout={() => {
-			goto('/login');
+		onlogout={async () => {
+			await goto('/login');
 		}}
 	/>
 	<main class="relative flex min-h-screen w-full flex-col">

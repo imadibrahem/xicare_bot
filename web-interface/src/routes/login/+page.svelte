@@ -6,8 +6,8 @@
 
 <main class="flex h-screen w-screen items-center justify-center">
 	<Login
-		onlogin={() => {
-			goto('/');
+		onlogin={async () => {
+			await goto('/');
 		}}
 	/>
 </main>
