@@ -15,6 +15,8 @@ dependencies:
       - langchain[google-vertexai] == 0.3.25
       - langchain-text-splitters==0.3.8
       - langchain-chroma==0.2.3
+      - langchain-community==0.3.24
+      - langgraph==0.4.3
       - pocketbase==0.15.0
       # - pypdf==5.4.0
       - python-dotenv==1.1.0
