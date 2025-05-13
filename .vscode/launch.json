@@ -12,6 +12,14 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "Python Debugger: Current File /w arguments",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": "${command:pickArgs}"
+        },
+        {
             "name": "generate embeddings",
             "type": "debugpy",
             "request": "launch",
@@ -40,6 +48,30 @@
                 "out/embeddings/ex-prodigy.json",
                 "out/embeddings/god-and-golem.json",
                 "out/embeddings/human-use.json"
+            ]
+        },
+        {
+            "name": "correct ocr",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "server/data_processing/correct_ocr.py",
+            "console": "integratedTerminal",
+            "args": [
+                "out/norbert-wiener-books/books/Cybernetics_shortened.md"
+            ]
+        },
+        {
+            "name": "create chat dataset",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "server/data_processing/create_chat_dataset.py",
+            "console": "integratedTerminal",
+            "args": [
+                "out/norbert-wiener-books/articles/Interview_Man_and_Machine.md",
+                "out/men_and_machines.json",
+                "--user-prefix=Q:",
+                "--model-prefix=A:",
+                "--pairs-per-object=1"
             ]
         }
     ]
