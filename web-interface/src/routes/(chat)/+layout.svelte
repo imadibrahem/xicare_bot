@@ -32,8 +32,7 @@
 							user: record.user,
 							created: record.created,
 							updated: record.updated,
-							awareness: record.awareness,
-							politeness: record.politeness
+							awareness: record.awareness
 						});
 					} else if (action === 'delete') {
 						conversations = conversations.filter((conversation) => conversation.id !== record.id);

@@ -36,8 +36,7 @@
 	{#if conversation}
 		<em class="p-4 text-center text-sm md:text-base"
 			>Norbert Wiener is {!conversation.awareness ? 'not ' : ''}aware of his death and current
-			developments and {!conversation.politeness ? 'does not insist ' : 'insists '}upon respect and
-			politeness.</em
+			developments.</em
 		>
 		<Tooltip.Provider>
 			<Tooltip.Root>

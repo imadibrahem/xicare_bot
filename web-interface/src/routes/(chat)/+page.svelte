@@ -11,11 +11,6 @@
 			id: 'awareness',
 			description: 'Norbert Wiener is aware of his death and current developments',
 			value: false
-		},
-		{
-			id: 'politeness',
-			description: 'He insists upon being treated respectfully and politely',
-			value: true
 		}
 	]);
 
