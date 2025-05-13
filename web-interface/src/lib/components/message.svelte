@@ -5,6 +5,8 @@
 	import type { SvelteHTMLElements } from 'svelte/elements';
 	import type { WithElementRef } from 'bits-ui';
 
+	const timeOptions: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' };
+
 	let {
 		text,
 		created,
@@ -28,7 +30,9 @@
 	{...rest}
 >
 	<span>{text}</span>
-	<span class="text-xs opacity-80">{new Date(created).toLocaleTimeString('en-US')}</span>
+	<span class="text-xs opacity-80"
+		>{new Date(created).toLocaleTimeString('en-US', timeOptions)}</span
+	>
 </div>
 
 <style>
