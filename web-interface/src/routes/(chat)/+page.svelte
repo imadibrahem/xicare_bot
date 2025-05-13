@@ -3,6 +3,7 @@
 	import { Switch } from '$lib/components/ui/switch/index';
 
 	import { goto } from '$app/navigation';
+	import { toast } from 'svelte-sonner';
 	import { currentUser, pb } from '$lib/pocketbase.svelte';
 
 	let settings = $state([
@@ -19,6 +20,27 @@
 	]);
 
 	let text = $state('');
+
+	const createConversation = async () => {
+		// Get user message and reset the textarea
+		const message = text;
+		text = '';
+
+		try {
+			// Create the conversation and navigate to it
+			const conversation = await pb.collection('conversations').create({
+				user: currentUser.record?.id,
+				...settings.reduce((obj: { [key: string]: boolean }, { id, value }) => {
+					obj[id] = value;
+					return obj;
+				}, {})
+			});
+			await goto(`/${conversation.id}?message=${message}`);
+		} catch (error) {
+			toast.error('Error creating conversation');
+			console.error('Error creating conversation:', error);
+		}
+	};
 </script>
 
 <div class="container flex h-full flex-col px-0">
@@ -59,22 +81,5 @@
 			</div>
 		</div>
 	</div>
-	<ChatInput
-		bind:text
-		onclick={async () => {
-			// Get user message and reset the textarea
-			const message = text;
-			text = '';
-
-			// Create the conversation and navigate to it
-			const conversation = await pb.collection('conversations').create({
-				user: currentUser.record?.id,
-				...settings.reduce((obj: { [key: string]: boolean }, { id, value }) => {
-					obj[id] = value;
-					return obj;
-				}, {})
-			});
-			await goto(`/${conversation.id}?message=${message}`);
-		}}
-	/>
+	<ChatInput bind:text onclick={createConversation} />
 </div>

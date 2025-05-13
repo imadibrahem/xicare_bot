@@ -5,6 +5,7 @@
 
 	import { onDestroy, onMount, untrack } from 'svelte';
 	import { page } from '$app/state';
+	import { toast } from 'svelte-sonner';
 	import { pb } from '$lib/pocketbase.svelte';
 	import { PUBLIC_GEN_URL } from '$env/static/public';
 
@@ -30,19 +31,27 @@
 
 		// Send message to generation endpoint with JWT
 		generating = true;
-		const response = await fetch(`${PUBLIC_GEN_URL}/generate`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${currentUser.token}`
-			},
-			body: JSON.stringify({ conversationId: page.params.id, message: messageText })
-		});
-		generating = false;
-		const token = response.headers.get('Authorization');
-		if (token) {
-			pb.authStore.save(token.slice('Bearer '.length));
-			pb.collection('users').authRefresh();
+		try {
+			const response = await fetch(`${PUBLIC_GEN_URL}/generate`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${currentUser.token}`
+				},
+				body: JSON.stringify({ conversationId: page.params.id, message: messageText })
+			});
+			if (response.status !== 200) {
+				toast.error('Error generating message');
+			}
+			generating = false;
+			const token = response.headers.get('Authorization');
+			if (token) {
+				pb.authStore.save(token.slice('Bearer '.length));
+				pb.collection('users').authRefresh();
+			}
+		} catch (error) {
+			toast.error('Error sending message');
+			console.error('Error sending message:', error);
 		}
 	};
 
@@ -54,21 +63,26 @@
 	let unsubscribe: () => void;
 	onMount(async () => {
 		// Add pocketbase subscriber for messages
-		unsubscribe = await pb
-			.collection('messages')
-			.subscribe<MessageType>('*', async ({ action, record }) => {
-				if (action === 'create') {
-					messages.push({
-						id: record.id,
-						conversation: record.conversation,
-						text: record.text,
-						role: record.role,
-						created: record.created
-					});
-				} else if (action === 'delete') {
-					messages = messages.filter((message) => message.id !== record.id);
-				}
-			});
+		try {
+			unsubscribe = await pb
+				.collection('messages')
+				.subscribe<MessageType>('*', async ({ action, record }) => {
+					if (action === 'create') {
+						messages.push({
+							id: record.id,
+							conversation: record.conversation,
+							text: record.text,
+							role: record.role,
+							created: record.created
+						});
+					} else if (action === 'delete') {
+						messages = messages.filter((message) => message.id !== record.id);
+					}
+				});
+		} catch (error) {
+			toast.error('Error subscribing to messages');
+			console.error('Error subscribing to messages:', error);
+		}
 
 		// If page get's initialized with a message, send that one off
 		const message = page.url.searchParams.get('message');

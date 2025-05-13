@@ -5,6 +5,7 @@
 
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { toast } from 'svelte-sonner';
 	import { pb } from '$lib/pocketbase.svelte';
 
 	import type { Conversation } from '$lib/types';
@@ -35,17 +36,22 @@
 
 	const deleteConversation = async (id: string) => {
 		// Delete all messages in conversation
-		const records = await pb.collection('messages').getFullList();
-		const messagesToDelete = records.filter((record) => record.conversation === id);
-		if (messagesToDelete.length > 0) {
-			await Promise.all(
-				messagesToDelete.map((record) => pb.collection('messages').delete(record.id))
-			);
-		}
-		// Delete conversation and navigate to a new conversation if the current one was deleted
-		await pb.collection('conversations').delete(id);
-		if (page.params.id && page.params.id === id) {
-			await goto('/');
+		try {
+			const records = await pb.collection('messages').getFullList();
+			const messagesToDelete = records.filter((record) => record.conversation === id);
+			if (messagesToDelete.length > 0) {
+				await Promise.all(
+					messagesToDelete.map((record) => pb.collection('messages').delete(record.id))
+				);
+			}
+			// Delete conversation and navigate to a new conversation if the current one was deleted
+			await pb.collection('conversations').delete(id);
+			if (page.params.id && page.params.id === id) {
+				await goto('/');
+			}
+		} catch (error) {
+			toast.error('Failed to delete message');
+			console.error('Failed to delete message:', error);
 		}
 	};
 </script>

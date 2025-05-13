@@ -1,5 +1,4 @@
 import { type ClassValue, clsx } from 'clsx';
-import { toast } from 'svelte-sonner';
 import { twMerge } from 'tailwind-merge';
 
 import type { Message } from '$lib/types';
@@ -15,10 +14,6 @@ export const copyMessagesToClipboard = (messages: Message[]) => {
 			`${message.role} [${new Date(message.created).toLocaleTimeString('en-US')}]: ${message.text}\n\n`,
 		''
 	);
-	try {
-		navigator.clipboard.writeText(messagesString);
-		toast('Copied to clipboard');
-	} catch (error) {
-		console.error('Failed to copy messages to clipboard:', error);
-	}
+
+	navigator.clipboard.writeText(messagesString);
 };

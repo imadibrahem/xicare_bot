@@ -5,6 +5,7 @@
 
 	import { goto, onNavigate } from '$app/navigation';
 	import { onDestroy, onMount } from 'svelte';
+	import { toast } from 'svelte-sonner';
 	import { page } from '$app/state';
 	import { pb } from '$lib/pocketbase.svelte';
 
@@ -21,22 +22,27 @@
 	// Add pocketbase subscriber for conversations
 	let unsubscribe: () => void;
 	onMount(async () => {
-		unsubscribe = await pb
-			.collection('conversations')
-			.subscribe<Conversation>('*', async ({ action, record }) => {
-				if (action === 'create') {
-					conversations.push({
-						id: record.id,
-						user: record.user,
-						created: record.created,
-						updated: record.updated,
-						awareness: record.awareness,
-						politeness: record.politeness
-					});
-				} else if (action === 'delete') {
-					conversations = conversations.filter((conversation) => conversation.id !== record.id);
-				}
-			});
+		try {
+			unsubscribe = await pb
+				.collection('conversations')
+				.subscribe<Conversation>('*', async ({ action, record }) => {
+					if (action === 'create') {
+						conversations.push({
+							id: record.id,
+							user: record.user,
+							created: record.created,
+							updated: record.updated,
+							awareness: record.awareness,
+							politeness: record.politeness
+						});
+					} else if (action === 'delete') {
+						conversations = conversations.filter((conversation) => conversation.id !== record.id);
+					}
+				});
+		} catch (error) {
+			toast.error('Error subscribing to conversations');
+			console.error('Error subscribing to conversations:', error);
+		}
 	});
 	// Unsubscribe on dismounting component
 	onDestroy(() => {

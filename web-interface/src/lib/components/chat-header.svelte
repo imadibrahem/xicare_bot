@@ -4,6 +4,7 @@
 	import * as Sidebar from '$lib/components/ui/sidebar/index';
 
 	import { page } from '$app/state';
+	import { toast } from 'svelte-sonner';
 	import { pb } from '$lib/pocketbase.svelte';
 	import { copyMessagesToClipboard } from '$lib/utils';
 
@@ -12,12 +13,18 @@
 	let { conversation }: { conversation?: Conversation } = $props();
 
 	const copy = async () => {
-		copyMessagesToClipboard(
-			(await pb.collection('messages').getFullList({
+		try {
+			const messages = (await pb.collection('messages').getFullList({
 				filter: pb.filter('conversation = {:id}', { id: page.params.id }),
 				sort: 'created'
-			})) as Message[]
-		);
+			})) as Message[];
+			copyMessagesToClipboard(messages);
+
+			toast('Copied to clipboard');
+		} catch (error) {
+			toast.error('Failed to copy messages to clipboard');
+			console.error('Failed to copy messages to clipboard:', error);
+		}
 	};
 </script>
 

@@ -22,8 +22,8 @@ An implementation of a "death bot" of Norbert Wiener using an LLM and vector sea
   - [x] add scroll to bottom
   - [ ] fix scroll to bottom
   - [x] set pocketbase and generation url as env variables
-  - [ ] add try/catch or try/except where necessary
-  - [ ] adda await to app.py
+  - [x] add try/catch or try/except where necessary
+  - [ ] add await to app.py
   - [ ] ? add aestetics
 - death bot
   - [ ] finetune with gemini
