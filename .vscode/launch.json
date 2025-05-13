@@ -20,13 +20,35 @@
             "args": "${command:pickArgs}"
         },
         {
+            "name": "generate embeddings",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "data_processing/generate_embeddings.py",
+            "console": "integratedTerminal",
+            // "args": "${command:pickArgs}"
+            "args": [
+                "--output=out/ex-prodigy.json",
+                "--chunk-size=1024",
+                "--chunk-overlap=200",
+                // "--dimensionality=768",
+                "--batch-size=20",
+                "out/norbert-wiener-books/ex-prodigy-single.txt"
+            ]
+        },
+        {
             "name": "awaken norbert",
             "type": "debugpy",
             "request": "launch",
             "program": "server/app.py",
             "console": "integratedTerminal",
             // "args": "${command:pickArgs}"
-            "args": []
+            "args": [
+                // "--dimensionality=768",
+                "out/embeddings/cybernetics.json",
+                "out/embeddings/ex-prodigy.json",
+                "out/embeddings/god-and-golem.json",
+                "out/embeddings/human-use.json"
+            ]
         },
         {
             "name": "correct ocr",

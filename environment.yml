@@ -7,9 +7,12 @@ dependencies:
   - click=8.1
   - tqdm=4.67
   - pip:
+      - chromadb==1.0.7
       - fastapi[standard]==0.115.9
       - google-cloud-aiplatform==1.87.0
       - google-genai==1.14.0
+      - langchain-text-splitters==0.3.8
       - pocketbase==0.15.0
       - pypdf==5.4.0
       - python-dotenv==1.1.0
+      - sentence-transformers[onnx]==4.0.2
