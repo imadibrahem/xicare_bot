@@ -86,8 +86,10 @@
 		}
 
 		// If page get's initialized with a message, send that one off
-		if (initialMessage.text) {
-			generateResponse(initialMessage.text);
+		const message = initialMessage.text;
+		if (message) {
+			initialMessage.text = '';
+			generateResponse(message);
 		}
 	});
 	// Unsubscribe on dismounting component
