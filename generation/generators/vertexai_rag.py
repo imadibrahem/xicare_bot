@@ -6,6 +6,7 @@ It allows for integration with Google's Gemini models, configured with a RAG cor
 context during generation.
 """
 
+from typing import Awaitable
 import vertexai
 from vertexai import rag
 from vertexai.generative_models import (
@@ -134,4 +135,34 @@ class VertexAIRAG:
 
         # Generate and parse response
         response = self.model.generate_content(contents)
+        return response.candidates[0].content.parts[0].text
+
+    async def generate_content_async(
+        self, history: list[dict[str, str]], user_role="user"
+    ) -> Awaitable[str]:
+        """
+        Generate content using the configured Gemini model with RAG asynchronously.
+
+        Takes a conversation history and generates the next response, leveraging
+        the RAG corpus to retrieve and incorporate relevant context.
+
+        Args:
+            history (list[dict[str, str]]): List of conversation turns as dictionaries
+                with 'role' and 'text' keys. Each dictionary represents one turn in the conversation.
+            user_role (str, optional): The role identifier for user messages. Defaults to "user".
+
+        Returns:
+            str: The generated text response from the model.
+        """
+        # Create content from list of {"role": ... , "text": ...}
+        contents = [
+            Content(
+                role="user" if item["role"] == user_role else "model",
+                parts=[Part.from_text(text=item["text"])],
+            )
+            for item in history
+        ]
+
+        # Generate and parse response
+        response = await self.model.generate_content_async(contents)
         return response.candidates[0].content.parts[0].text

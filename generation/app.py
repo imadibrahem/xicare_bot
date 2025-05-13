@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-import requests
+import aiohttp  # Replace requests with aiohttp
 from pydantic import BaseModel
 import uvicorn
 from dotenv import dotenv_values
@@ -57,13 +57,14 @@ def extract_token(request: Request) -> str:
     return None
 
 
-def verify_token(token: str):
-    response = requests.post(
-        f"{config["PB_URL"]}/api/collections/users/auth-refresh",
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    if response.status_code == 200:
-        return response.json()
+async def verify_token(token: str):  # Make verify_token async
+    async with aiohttp.ClientSession() as session:
+        async with session.post(
+            f"{config['PB_URL']}/api/collections/users/auth-refresh",
+            headers={"Authorization": f"Bearer {token}"},
+        ) as response:
+            if response.status == 200:  # Note: .status in aiohttp, not .status_code
+                return await response.json()
     return None
 
 
@@ -75,50 +76,54 @@ async def generate(data: GenerateRequest, request: Request):
         raise HTTPException(status_code=401, detail="Missing token")
 
     # refresh auth with token (generates new token)
-    auth_store = verify_token(token)
+    auth_store = await verify_token(token)  # Use await here
     if not auth_store:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    # Save user's message to PocketBase
-    requests.post(
-        f"{config["PB_URL"]}/api/collections/messages/records",
-        json={
-            "conversation": data.conversationId,
-            "text": data.message,
-            "role": "user",
-        },
-        headers={
-            "Authorization": f"Bearer {auth_store["token"]}",
-        },
-    )
+    async with aiohttp.ClientSession() as session:
+        # Save user's message to PocketBase
+        async with session.post(
+            f"{config['PB_URL']}/api/collections/messages/records",
+            json={
+                "conversation": data.conversationId,
+                "text": data.message,
+                "role": "user",
+            },
+            headers={
+                "Authorization": f"Bearer {auth_store['token']}",
+            },
+        ) as response:
+            pass  # We don't need to process this response
 
-    # Get the conversation history
-    response = requests.get(
-        f"{config["PB_URL"]}/api/collections/messages/records",
-        json={"sort": "-created"},
-        headers={
-            "Authorization": f"Bearer {auth_store["token"]}",
-        },
-    )
+        # Get the conversation history
+        async with session.get(
+            f"{config['PB_URL']}/api/collections/messages/records",
+            params={"sort": "-created"},  # Use params instead of json for GET
+            headers={
+                "Authorization": f"Bearer {auth_store['token']}",
+            },
+        ) as response:
+            conversation_data = await response.json()
 
-    # Generate AI response
-    response_text = norbert.generate_content(response.json()["items"])
+        # Generate AI response
+        response_text = await norbert.generate_content_async(conversation_data["items"])
 
-    # Save AI's response to PocketBase
-    requests.post(
-        f"{config["PB_URL"]}/api/collections/messages/records",
-        json={
-            "conversation": data.conversationId,
-            "text": response_text,
-            "role": "norbert",
-        },
-        headers={"Authorization": f"Bearer {auth_store["token"]}"},
-    )
+        # Save AI's response to PocketBase
+        async with session.post(
+            f"{config['PB_URL']}/api/collections/messages/records",
+            json={
+                "conversation": data.conversationId,
+                "text": response_text,
+                "role": "norbert",
+            },
+            headers={"Authorization": f"Bearer {auth_store['token']}"},
+        ) as response:
+            pass  # We don't need to process this response
 
     # Return generated message with new token
     return JSONResponse(
         headers={
-            "Authorization": f"Bearer {auth_store["token"]}",
+            "Authorization": f"Bearer {auth_store['token']}",
             "Access-Control-Expose-Headers": "Authorization",
         },
         content={"status": "ok"},
