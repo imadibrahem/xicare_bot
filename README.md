@@ -20,7 +20,7 @@ An implementation of a "death bot" of Norbert Wiener using an LLM and vector sea
   - [x] add shortcut for message sending
   - [x] add clipboard copy
   - [x] add scroll to bottom
-  - [ ] fix scroll to bottom
+  - [x] fix scroll to bottom
   - [x] set pocketbase and generation url as env variables
   - [x] add try/catch or try/except where necessary
   - [x] add await to app.py
