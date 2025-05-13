@@ -13,7 +13,7 @@ from generators.vertexai_rag import VertexAIRAG
 config = dotenv_values(".env")
 
 # Load system prompt
-with open("generation/system_prompt.txt") as file:
+with open("generation/system_prompt_01.txt") as file:
     system_prompt = file.read()
 
 
