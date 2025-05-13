@@ -5,6 +5,7 @@
 	import { goto } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import { currentUser, pb } from '$lib/pocketbase.svelte';
+	import { initialMessage } from '$lib/message.svelte';
 
 	let settings = $state([
 		{
@@ -30,7 +31,10 @@
 					return obj;
 				}, {})
 			});
-			await goto(`/${conversation.id}?message=${message}`);
+			// Set the global message state to transfer the first message to the new conversation
+			initialMessage.text = message;
+			// Navigate to the new conversation
+			await goto(`/${conversation.id}`);
 		} catch (error) {
 			toast.error('Error creating conversation');
 			console.error('Error creating conversation:', error);

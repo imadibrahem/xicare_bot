@@ -7,6 +7,7 @@
 	import { page } from '$app/state';
 	import { toast } from 'svelte-sonner';
 	import { pb } from '$lib/pocketbase.svelte';
+	import { initialMessage } from '$lib/message.svelte';
 	import { PUBLIC_GEN_URL } from '$env/static/public';
 
 	import type { Message as MessageType } from '$lib/types';
@@ -21,9 +22,9 @@
 	let generating = $state(false);
 
 	const generateResponse = async (message: string | null = null) => {
-		// Get user message and reset the textarea
 		let messageText = '';
 		if (message) messageText = message;
+		// Get user message and reset the textarea
 		else {
 			messageText = text;
 			text = '';
@@ -85,10 +86,8 @@
 		}
 
 		// If page get's initialized with a message, send that one off
-		const message = page.url.searchParams.get('message');
-		if (message) {
-			await goto(page.url.pathname);
-			generateResponse(message);
+		if (initialMessage.text) {
+			generateResponse(initialMessage.text);
 		}
 	});
 	// Unsubscribe on dismounting component
