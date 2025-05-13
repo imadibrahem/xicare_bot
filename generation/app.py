@@ -32,7 +32,7 @@ norbert = VertexAIRAG(
 app = FastAPI()
 
 origins = [
-    "http://localhost:5173",
+    config["INTERFACE_URL"],
 ]
 
 app.add_middleware(
