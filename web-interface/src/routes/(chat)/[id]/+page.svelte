@@ -21,7 +21,7 @@
 	let text = $state('');
 	let generating = $state(false);
 
-	const generateResponse = async (message: string | null = null) => {
+	const generateResponse = async (message?: string) => {
 		let messageText = '';
 		if (message) messageText = message;
 		// Get user message and reset the textarea
@@ -99,23 +99,50 @@
 
 	let windowScrollY = $state(0);
 	let windowHeight = $state(0);
-	// svelte-ignore non_reactive_update
-	let documentHeight = 0;
-	// Check scroll position before update (enable autoscrolling, if is at the bottom)
-	let autoscroll = $derived(windowHeight + windowScrollY >= documentHeight - 20);
+
+	// Function to get accurate document height
+	function getDocumentHeight() {
+		return Math.max(
+			document.body.scrollHeight,
+			document.documentElement.scrollHeight,
+			document.body.offsetHeight,
+			document.documentElement.offsetHeight
+		);
+	}
+
 	// Autoscroll to the bottom when new message comes in
 	const scrollToBottom = () => {
-		window.scrollTo(0, documentHeight);
+		setTimeout(() => {
+			const height = getDocumentHeight();
+			window.scrollTo({
+				top: height
+			});
+		}, 0);
 	};
-	$effect(() => {
-		messages.length;
-		if (autoscroll) scrollToBottom();
+	let isAtBottom = false;
+	$effect.pre(() => {
+		// Check if user is at bottom of chat
+		isAtBottom = windowHeight + windowScrollY >= getDocumentHeight() - 20;
 	});
-	afterNavigate(scrollToBottom);
+	// Watch for message changes and scroll if needed
+	$effect(() => {
+		// Track message changes
+		messages.length;
+
+		// Wait for DOM to update with new messages
+		setTimeout(() => {
+			if (isAtBottom) scrollToBottom();
+		}, 0);
+	});
+
+	// Scroll after navigation
+	afterNavigate(() => {
+		// Give DOM time to fully render
+		setTimeout(scrollToBottom, 100);
+	});
 </script>
 
 <svelte:window bind:scrollY={windowScrollY} bind:innerHeight={windowHeight} />
-<svelte:body bind:offsetHeight={documentHeight} />
 
 <div class="container flex h-full flex-col px-0">
 	<div class="flex-1">
