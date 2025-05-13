@@ -138,7 +138,8 @@
 	// Scroll after navigation
 	afterNavigate(() => {
 		// Give DOM time to fully render
-		setTimeout(scrollToBottom, 100);
+		// setTimeout(scrollToBottom, 100);
+		scrollToBottom();
 	});
 </script>
 
