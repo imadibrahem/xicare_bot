@@ -6,6 +6,7 @@
 	import { onDestroy, onMount, untrack } from 'svelte';
 	import { page } from '$app/state';
 	import { pb } from '$lib/pocketbase.svelte';
+	import { PUBLIC_GEN_URL } from '$env/static/public';
 
 	import type { Message as MessageType } from '$lib/types';
 	import type { PageProps } from './$types';
@@ -29,7 +30,7 @@
 
 		// Send message to generation endpoint with JWT
 		generating = true;
-		const response = await fetch('http://127.0.0.1:8000/generate', {
+		const response = await fetch(`${PUBLIC_GEN_URL}/generate`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
