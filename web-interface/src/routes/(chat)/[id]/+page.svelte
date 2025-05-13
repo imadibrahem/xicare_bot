@@ -161,7 +161,7 @@
 	<ChatInput
 		bind:text
 		onclick={() => {
-			generateResponse();
+			if (text) generateResponse();
 		}}
 	/>
 </div>

@@ -80,5 +80,10 @@
 			</div>
 		</div>
 	</div>
-	<ChatInput bind:text onclick={createConversation} />
+	<ChatInput
+		bind:text
+		onclick={() => {
+			if (text) createConversation();
+		}}
+	/>
 </div>
