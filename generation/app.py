@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-import aiohttp  # Replace requests with aiohttp
+import httpx
 from pydantic import BaseModel
 import uvicorn
 from dotenv import dotenv_values
@@ -57,14 +57,14 @@ def extract_token(request: Request) -> str:
     return None
 
 
-async def verify_token(token: str):  # Make verify_token async
-    async with aiohttp.ClientSession() as session:
-        async with session.post(
+async def verify_token(token: str):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
             f"{config['PB_URL']}/api/collections/users/auth-refresh",
             headers={"Authorization": f"Bearer {token}"},
-        ) as response:
-            if response.status == 200:  # Note: .status in aiohttp, not .status_code
-                return await response.json()
+        )
+        if response.status_code == 200:
+            return response.json()
     return None
 
 
@@ -76,13 +76,13 @@ async def generate(data: GenerateRequest, request: Request):
         raise HTTPException(status_code=401, detail="Missing token")
 
     # refresh auth with token (generates new token)
-    auth_store = await verify_token(token)  # Use await here
+    auth_store = await verify_token(token)
     if not auth_store:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    async with aiohttp.ClientSession() as session:
+    async with httpx.AsyncClient() as client:
         # Save user's message to PocketBase
-        async with session.post(
+        await client.post(
             f"{config['PB_URL']}/api/collections/messages/records",
             json={
                 "conversation": data.conversationId,
@@ -92,24 +92,24 @@ async def generate(data: GenerateRequest, request: Request):
             headers={
                 "Authorization": f"Bearer {auth_store['token']}",
             },
-        ) as response:
-            pass  # We don't need to process this response
+        )
 
         # Get the conversation history
-        async with session.get(
+        response = await client.get(
             f"{config['PB_URL']}/api/collections/messages/records",
-            params={"sort": "-created"},  # Use params instead of json for GET
+            params={"sort": "-created"},  # Changed from json to params
             headers={
                 "Authorization": f"Bearer {auth_store['token']}",
             },
-        ) as response:
-            conversation_data = await response.json()
+        )
+        response_data = response.json()
 
-        # Generate AI response
-        response_text = await norbert.generate_content_async(conversation_data["items"])
+    # Generate AI response
+    response_text = await norbert.generate_content_async(response_data["items"])
 
+    async with httpx.AsyncClient() as client:
         # Save AI's response to PocketBase
-        async with session.post(
+        await client.post(
             f"{config['PB_URL']}/api/collections/messages/records",
             json={
                 "conversation": data.conversationId,
@@ -117,8 +117,7 @@ async def generate(data: GenerateRequest, request: Request):
                 "role": "norbert",
             },
             headers={"Authorization": f"Bearer {auth_store['token']}"},
-        ) as response:
-            pass  # We don't need to process this response
+        )
 
     # Return generated message with new token
     return JSONResponse(
