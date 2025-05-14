@@ -20,9 +20,9 @@
 			})) as Message[];
 			copyMessagesToClipboard(messages);
 
-			toast('Copied to clipboard');
+			toast('In die Zwischenablage kopiert');
 		} catch (error) {
-			toast.error('Failed to copy messages to clipboard');
+			toast.error('Fehler beim Kopieren in die Zwischenablage');
 			console.error('Failed to copy messages to clipboard:', error);
 		}
 	};
@@ -34,10 +34,6 @@
 	<Sidebar.Trigger class="bg-background pointer-events-auto m-2 md:m-2" />
 	<!-- Show settings in top bar -->
 	{#if conversation}
-		<em class="p-4 text-center text-sm md:text-base"
-			>Norbert Wiener is {!conversation.awareness ? 'not ' : ''}aware of his death and current
-			developments.</em
-		>
 		<Tooltip.Provider>
 			<Tooltip.Root>
 				<Tooltip.Trigger
@@ -47,7 +43,7 @@
 					<Copy />
 				</Tooltip.Trigger>
 				<Tooltip.Content>
-					<p>Copy conversation to clipboard</p>
+					<p>Chat in die Zwischenablage kopieren</p>
 				</Tooltip.Content>
 			</Tooltip.Root>
 		</Tooltip.Provider>

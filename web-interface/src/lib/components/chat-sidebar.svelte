@@ -50,7 +50,7 @@
 				await goto('/');
 			}
 		} catch (error) {
-			toast.error('Failed to delete message');
+			toast.error('Fehler beim Löschen der Nachricht');
 			console.error('Failed to delete message:', error);
 		}
 	};
@@ -64,7 +64,7 @@
 					{#snippet child({ props })}
 						<a href="/" {...props}>
 							<Plus />
-							<span>New conversation</span>
+							<span>Neuer Chat</span>
 						</a>
 					{/snippet}
 				</Sidebar.MenuButton>
@@ -83,7 +83,7 @@
 									<Sidebar.MenuButton isActive={currentId === conversation.id}>
 										{#snippet child({ props })}
 											<a href="/{conversation.id}" {...props}>
-												{new Date(conversation.updated).toLocaleTimeString('en-US', dateOptions)}
+												{new Date(conversation.updated).toLocaleTimeString('de-DE', dateOptions)}
 											</a>
 										{/snippet}
 									</Sidebar.MenuButton>
@@ -92,7 +92,7 @@
 									<ContextMenu.Item
 										onclick={() => {
 											deleteConversation(conversation.id);
-										}}>Delete</ContextMenu.Item
+										}}>Löschen</ContextMenu.Item
 									>
 								</ContextMenu.Content>
 							</ContextMenu.Root>
@@ -107,12 +107,12 @@
 			<Sidebar.MenuItem>
 				<Sidebar.MenuButton>
 					{#snippet child({ props })}
-						<a href="/about" {...props}>About</a>
+						<a href="/about" {...props}>Über das Projekt</a>
 					{/snippet}
 				</Sidebar.MenuButton>
 			</Sidebar.MenuItem>
 			<Sidebar.MenuItem>
-				<Sidebar.MenuButton onclick={logout}>Log out</Sidebar.MenuButton>
+				<Sidebar.MenuButton onclick={logout}>Ausloggen</Sidebar.MenuButton>
 			</Sidebar.MenuItem>
 		</Sidebar.Menu>
 	</Sidebar.Footer>

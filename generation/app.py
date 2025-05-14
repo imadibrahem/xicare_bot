@@ -6,22 +6,19 @@ from pydantic import BaseModel
 import uvicorn
 from dotenv import dotenv_values
 
-from generators.vertexai_rag import VertexAIRAG
+from generators.dummy import Dummy
 
 
 # Load environment variables from .env file
 config = dotenv_values(".env")
 
-# Load system prompt
-with open("generation/system_prompt_01.txt") as file:
-    system_prompt = file.read()
+SYSTEM_PROMPT = """"""
 
 
 # Get RAG model
-norbert = VertexAIRAG(
-    system_prompt=system_prompt,
+norbert = Dummy(
+    system_prompt=SYSTEM_PROMPT,
     project=config["PROJECT_ID"],
-    rag_corpus=config["RAG_CORPUS"],
     location=config["LOCATION"],
     temp=1.0,
     top_p=1.0,

@@ -1,4 +1,4 @@
-name: death-bot
+name: berlin-chatbot
 channels:
   - defaults
 dependencies:
@@ -10,14 +10,6 @@ dependencies:
       - chromadb==1.0.7
       - fastapi[standard]==0.115.9
       - google-cloud-aiplatform==1.87.0
+      - google-genai==1.14.0
       - httpx==0.28.1
-      # - google-genai==1.14.0
-      - langchain[google-vertexai] == 0.3.25
-      - langchain-text-splitters==0.3.8
-      - langchain-chroma==0.2.3
-      - langchain-community==0.3.24
-      - langgraph==0.4.3
-      - pocketbase==0.15.0
-      # - pypdf==5.4.0
       - python-dotenv==1.1.0
-      - sentence-transformers[onnx]==4.0.2

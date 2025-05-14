@@ -55,7 +55,7 @@
 				className,
 				'bg-secondary focus:border-foreground w-full resize-none self-center overflow-hidden outline-none focus:ring-0'
 			)}
-			placeholder="Type your message here..."
+			placeholder="Geben Sie hier Ihre Frage ein..."
 			autocomplete="off"
 			bind:this={textarea}
 			bind:value={text}

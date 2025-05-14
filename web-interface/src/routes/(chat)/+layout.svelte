@@ -32,14 +32,14 @@
 							user: record.user,
 							created: record.created,
 							updated: record.updated,
-							awareness: record.awareness
+							setting1: record.setting1
 						});
 					} else if (action === 'delete') {
 						conversations = conversations.filter((conversation) => conversation.id !== record.id);
 					}
 				});
 		} catch (error) {
-			toast.error('Error subscribing to conversations');
+			toast.error('Fehler beim Abbonnieren neuer chats');
 			console.error('Error subscribing to conversations:', error);
 		}
 	});

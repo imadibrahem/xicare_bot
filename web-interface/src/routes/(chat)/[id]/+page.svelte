@@ -42,7 +42,7 @@
 				body: JSON.stringify({ conversationId: page.params.id, message: messageText })
 			});
 			if (response.status !== 200) {
-				toast.error('Error generating message');
+				toast.error('Fehler beim Generieren der Nachricht');
 			}
 			generating = false;
 			const token = response.headers.get('Authorization');
@@ -51,7 +51,7 @@
 				pb.collection('users').authRefresh();
 			}
 		} catch (error) {
-			toast.error('Error sending message');
+			toast.error('Fehler beim Senden der Nachricht');
 			console.error('Error sending message:', error);
 		}
 	};
@@ -81,7 +81,7 @@
 					}
 				});
 		} catch (error) {
-			toast.error('Error subscribing to messages');
+			toast.error('Fehler beim Abbonnieren neuer Nachrichten');
 			console.error('Error subscribing to messages:', error);
 		}
 

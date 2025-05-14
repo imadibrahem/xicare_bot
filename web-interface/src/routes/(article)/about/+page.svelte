@@ -1,10 +1,10 @@
 <h1
 	class="scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight transition-colors first:mt-0 lg:text-4xl"
 >
-	About
+	Über das Projekt
 </h1>
 <h2 class="mt-6 scroll-m-20 text-2xl font-semibold tracking-tight first:mt-0 lg:text-3xl">
-	The Joke Tax
+	Unterüberschrift
 </h2>
 <p class="md:text-lg md:leading-7 lg:text-xl lg:leading-8 [&:not(:first-child)]:mt-6">
 	Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent nec maximus nisl, vitae faucibus
@@ -20,7 +20,7 @@
 	euismod.
 </p>
 <h2 class="mt-6 scroll-m-20 text-2xl font-semibold tracking-tight first:mt-0 lg:text-3xl">
-	The Joke Tax
+	Unterüberschrift
 </h2>
 <p class="md:text-lg md:leading-7 lg:text-xl lg:leading-8 [&:not(:first-child)]:mt-6">
 	Mauris laoreet iaculis urna ac ornare. Aliquam erat volutpat. Nulla sit amet mauris id sem tempor

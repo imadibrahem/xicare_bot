@@ -31,7 +31,7 @@
 >
 	<span>{text}</span>
 	<span class="text-xs opacity-80"
-		>{new Date(created).toLocaleTimeString('en-US', timeOptions)}</span
+		>{new Date(created).toLocaleTimeString('de-DE', timeOptions)}</span
 	>
 </div>
 

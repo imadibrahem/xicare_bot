@@ -11,7 +11,7 @@ export const copyMessagesToClipboard = (messages: Message[]) => {
 	const messagesString = messages.reduce(
 		(s, message) =>
 			s +
-			`${message.role} [${new Date(message.created).toLocaleTimeString('en-US')}]: ${message.text}\n\n`,
+			`${message.role} [${new Date(message.created).toLocaleTimeString('de-DE')}]: ${message.text}\n\n`,
 		''
 	);
 

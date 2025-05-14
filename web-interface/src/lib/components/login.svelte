@@ -13,14 +13,14 @@
 	let password = $state('');
 	const login = async () => {
 		if (!username || !password) {
-			toast.error('Username and password must be given');
+			toast.error('Nutzername und Passwort müssen angegeben werden');
 			return;
 		}
 
 		try {
 			await pb.collection('users').authWithPassword(username, password);
 		} catch {
-			toast.error('Wrong username or password');
+			toast.error('Falscher Nutzername oder falsches Passwort');
 		}
 		username = '';
 		password = '';
@@ -32,7 +32,7 @@
 	<Card.Root class="m-4 w-96">
 		<Card.Header>
 			<Card.Title class="text-2xl">Login</Card.Title>
-			<Card.Description>Enter your email below to login to your account</Card.Description>
+			<Card.Description>Geben Sie Ihren Nutzernamen an, um sich einzuloggen</Card.Description>
 		</Card.Header>
 		<Card.Content>
 			<form
@@ -42,14 +42,14 @@
 				}}
 			>
 				<div class="grid gap-2">
-					<Label for="username">Username</Label>
+					<Label for="username">Nutzername</Label>
 					<Input id="username" bind:value={username} />
 				</div>
 				<div class="grid gap-2">
-					<Label for="password">Password</Label>
+					<Label for="password">Passwort</Label>
 					<Input id="password" type="password" bind:value={password} />
 				</div>
-				<Button type="submit" class="w-full" onclick={login}>Login</Button>
+				<Button type="submit" class="w-full" onclick={login}>Einloggen</Button>
 			</form>
 		</Card.Content>
 	</Card.Root>

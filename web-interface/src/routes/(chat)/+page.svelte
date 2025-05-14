@@ -9,8 +9,8 @@
 
 	let settings = $state([
 		{
-			id: 'awareness',
-			description: 'Norbert Wiener is aware of his death and current developments',
+			id: 'setting1',
+			description: 'Einstellung 1',
 			value: false
 		}
 	]);
@@ -36,7 +36,7 @@
 			// Navigate to the new conversation
 			await goto(`/${conversation.id}`);
 		} catch (error) {
-			toast.error('Error creating conversation');
+			toast.error('Fehler beim Erstellen eines neuen Chats');
 			console.error('Error creating conversation:', error);
 		}
 	};
@@ -53,18 +53,11 @@
 					quis erat quis eleifend. In hac habitasse platea dictumst. In id metus mauris. In sed
 					velit dui.
 				</p>
-				<p class="[&:not(:first-child)]:mt-6">
-					Vivamus molestie commodo ipsum, quis viverra enim ultricies et. Nam ornare magna at augue
-					bibendum, ac mattis sem lobortis. Duis at vestibulum urna, vitae accumsan erat. Sed velit
-					ipsum, tincidunt et ex eu, pulvinar sagittis dolor. Vestibulum in dictum quam. Donec
-					vestibulum id mi ac congue. Duis ut tristique magna, vitae dapibus dolor. Pellentesque
-					eget risus nec est ultrices euismod.
-				</p>
 			</div>
 			<div class="flex w-full flex-col items-center gap-6 text-center">
 				<div class="flex flex-col">
-					<span>Conversation setting setting</span>
-					<span><em>Can't be changed after conversation has started</em></span>
+					<span>Entwicklereinstellungen</span>
+					<span><em>Können nach Beginn des Chats nicht mehr geändert werden</em></span>
 				</div>
 				<div class="flex w-full flex-col gap-4">
 					<!--  Render settings -->
