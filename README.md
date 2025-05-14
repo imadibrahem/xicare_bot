@@ -9,3 +9,5 @@ A dev interface for the new Berlin Administration chatbot using pocketbase and a
 ## Notes
 
 - Current pocketbase version: v0.28.1
+
+TEST
