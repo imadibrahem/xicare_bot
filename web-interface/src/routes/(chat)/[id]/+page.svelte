@@ -3,7 +3,7 @@
 	import ChatInput from '$lib/components/chat-input.svelte';
 	import Generating from '$lib/components/generating.svelte';
 
-	import { onDestroy, onMount, untrack } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { toast } from 'svelte-sonner';
 	import { pb } from '$lib/pocketbase.svelte';
@@ -12,7 +12,7 @@
 
 	import type { Message as MessageType } from '$lib/types';
 	import type { PageProps } from './$types';
-	import { afterNavigate, goto } from '$app/navigation';
+	import { afterNavigate } from '$app/navigation';
 	import { currentUser } from '$lib/pocketbase.svelte';
 
 	let { data }: PageProps = $props();
