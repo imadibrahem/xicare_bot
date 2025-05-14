@@ -1,6 +1,7 @@
 <script lang="ts">
 	import * as Sidebar from '$lib/components/ui/sidebar/index';
 	import * as ContextMenu from '$lib/components/ui/context-menu/index';
+	import LightSwitch from './light-switch.svelte';
 	import Plus from '@lucide/svelte/icons/plus';
 
 	import { page } from '$app/state';
@@ -113,6 +114,9 @@
 			</Sidebar.MenuItem>
 			<Sidebar.MenuItem>
 				<Sidebar.MenuButton onclick={logout}>Ausloggen</Sidebar.MenuButton>
+			</Sidebar.MenuItem>
+			<Sidebar.MenuItem>
+				<LightSwitch />
 			</Sidebar.MenuItem>
 		</Sidebar.Menu>
 	</Sidebar.Footer>
