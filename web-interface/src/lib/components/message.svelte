@@ -39,12 +39,18 @@
 	._chat-message :global(p:first-child) {
 		margin-top: 0;
 	}
-
 	._chat-message :global(p:last-child) {
 		margin-bottom: 0;
 	}
-
 	._chat-message :global(p) {
 		margin: 1em 0;
+	}
+
+	._chat-message :global(a) {
+		color: hsl(var(--muted-foreground));
+	}
+	._chat-message :global(a:hover) {
+		color: hsl(var(--foreground));
+		text-decoration: underline;
 	}
 </style>
