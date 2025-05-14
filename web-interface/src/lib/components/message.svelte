@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { marked } from 'marked';
 	import { cn } from '$lib/utils';
 
 	import type { Message } from '$lib/types';
@@ -28,8 +29,22 @@
 	bind:this={ref}
 	{...rest}
 >
-	<span>{text}</span>
-	<span class="text-xs opacity-80"
+	<div class="_chat-message leading-relaxed">{@html marked.parse(text)}</div>
+	<span class="pt-1 text-xs opacity-80"
 		>{new Date(created).toLocaleTimeString('de-DE', timeOptions)}</span
 	>
 </div>
+
+<style>
+	._chat-message :global(p:first-child) {
+		margin-top: 0;
+	}
+
+	._chat-message :global(p:last-child) {
+		margin-bottom: 0;
+	}
+
+	._chat-message :global(p) {
+		margin: 1em 0;
+	}
+</style>
