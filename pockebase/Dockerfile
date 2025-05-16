@@ -1,7 +1,22 @@
-FROM python:3.12-alpine:latest
+FROM alpine:latest
 
-WORKDIR /app/generation
+ARG PB_VERSION=0.28.1
 
-# Install other dependencies
-COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN apk add --no-cache \
+    unzip \
+    ca-certificates
+
+# download and unzip PocketBase
+ADD https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/pocketbase_${PB_VERSION}_linux_amd64.zip /tmp/pb.zip
+RUN unzip /tmp/pb.zip -d /app/pb/
+
+# uncomment to copy the local pb_migrations dir into the image
+COPY ./pb_migrations /app/pb/pb_migrations
+
+# uncomment to copy the local pb_hooks dir into the image
+# COPY ./pb_hooks /app/pb/pb_hooks
+
+EXPOSE 8080
+
+# start PocketBase
+CMD ["/app/pb/pocketbase", "serve", "--http=0.0.0.0:8080"]

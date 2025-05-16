@@ -3,8 +3,6 @@ services:
     build: ./pocketbase
     command: ["bash", "run-opt-1.3b.sh"]
     restart: unless-stopped
-    volumes:
-      - ./pocketbase/pb_migrations:/pb/pb_migrations
   web-interface:
     image: node:22-alpine:latest
     working_dir: /app/web-interface
