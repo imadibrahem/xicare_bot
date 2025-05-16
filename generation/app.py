@@ -97,7 +97,7 @@ async def generate(data: GenerateRequest, request: Request):
         # Get the conversation history
         response = await client.get(
             f"{os.environ.get('PUBLIC_PB_URL')}/api/collections/messages/records",
-            params={"sort": "-created"},  # Changed from json to params
+            params={"sort": "created"},  # Changed from json to params
             headers={
                 "Authorization": f"Bearer {auth_store['token']}",
             },
