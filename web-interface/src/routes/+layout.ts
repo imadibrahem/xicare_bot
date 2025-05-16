@@ -1,4 +1,4 @@
-import { currentUser } from '$lib/pocketbase.svelte';
+import { currentUser, pb } from '$lib/pocketbase.svelte';
 import { redirect } from '@sveltejs/kit';
 
 import type { LayoutLoad } from './$types';
@@ -16,6 +16,11 @@ export const load: LayoutLoad = async ({ url }) => {
 
 	// Redirect to login if user is not logged in and trying to access protected route
 	if (!currentUser.record && !isPublicRoute) {
-		redirect(307, '/login');
+		try {
+			// Do an auth refresh on every page reload
+			await pb.collection('users').authRefresh();
+		} finally {
+			redirect(307, '/login');
+		}
 	}
 };
