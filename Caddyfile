@@ -1,0 +1,19 @@
+{$SITE_ADDRESS} {
+	encode
+
+    # pocketbase
+	handle /_/* {
+		reverse_proxy pocketbase:8090
+	}
+
+    # generation
+    handle /generation/* {
+		reverse_proxy generation:8000
+	}
+
+	handle {
+		root * /app/web-interface/build
+		try_files {path} /index.html
+		file_server
+	}
+}

@@ -33,7 +33,7 @@
 		// Send message to generation endpoint with JWT
 		generating = true;
 		try {
-			const response = await fetch(`${PUBLIC_GEN_URL}/generate`, {
+			const response = await fetch(`${PUBLIC_GEN_URL}/generation/generate`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',

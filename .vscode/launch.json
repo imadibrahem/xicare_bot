@@ -20,59 +20,14 @@
             "args": "${command:pickArgs}"
         },
         {
-            "name": "generate embeddings",
+            "name": "Run generation server",
             "type": "debugpy",
             "request": "launch",
-            "program": "data_processing/generate_embeddings.py",
-            "console": "integratedTerminal",
-            // "args": "${command:pickArgs}"
-            "args": [
-                "--output=out/ex-prodigy.json",
-                "--chunk-size=1024",
-                "--chunk-overlap=200",
-                // "--dimensionality=768",
-                "--batch-size=20",
-                "out/norbert-wiener-books/ex-prodigy-single.txt"
-            ]
-        },
-        {
-            "name": "awaken norbert",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "server/app.py",
-            "console": "integratedTerminal",
-            // "args": "${command:pickArgs}"
-            "args": [
-                // "--dimensionality=768",
-                "out/embeddings/cybernetics.json",
-                "out/embeddings/ex-prodigy.json",
-                "out/embeddings/god-and-golem.json",
-                "out/embeddings/human-use.json"
-            ]
-        },
-        {
-            "name": "correct ocr",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "server/data_processing/correct_ocr.py",
-            "console": "integratedTerminal",
-            "args": [
-                "out/norbert-wiener-books/books/Cybernetics_shortened.md"
-            ]
-        },
-        {
-            "name": "create chat dataset",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "server/data_processing/create_chat_dataset.py",
-            "console": "integratedTerminal",
-            "args": [
-                "out/norbert-wiener-books/articles/Interview_Man_and_Machine.md",
-                "out/men_and_machines.json",
-                "--user-prefix=Q:",
-                "--model-prefix=A:",
-                "--pairs-per-object=1"
-            ]
+            "program": "generation/app.py",
+            "env": {
+                "CORS": "true"
+            },
+            "console": "integratedTerminal"
         }
     ]
 }

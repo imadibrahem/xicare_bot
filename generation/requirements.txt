@@ -1,0 +1,6 @@
+chromadb==1.0.7
+fastapi[standard]==0.115.9
+google-cloud-aiplatform==1.87.0
+google-genai==1.14.0
+httpx==0.28.1
+python-dotenv==1.1.0

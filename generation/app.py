@@ -1,44 +1,47 @@
+import os
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
 from pydantic import BaseModel
 import uvicorn
-from dotenv import dotenv_values
+from dotenv import load_dotenv
 
 from generators.dummy import Dummy
 
 
 # Load environment variables from .env file
-config = dotenv_values(".env")
+config = load_dotenv()
 
 SYSTEM_PROMPT = """"""
 
 
 # Get RAG model
-norbert = Dummy(
+generator = Dummy(
     system_prompt=SYSTEM_PROMPT,
-    project=config["PROJECT_ID"],
-    location=config["LOCATION"],
+    project=os.environ.get("PROJECT_ID"),
+    location=os.environ.get("LOCATION"),
     temp=1.0,
     top_p=1.0,
     max_output_tokens=8192,
 )
 
-# Initializing FastAPI with CORS
+# Initializing FastAPI
 app = FastAPI()
 
-origins = [
-    config["INTERFACE_URL"],
-]
+# Add CORS if environment variable is set
+if os.environ.get("CORS"):
+    origins = [
+        os.environ.get("PUBLIC_INTERFACE_URL"),
+    ]
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 
 # Model for incoming POST data
@@ -57,7 +60,7 @@ def extract_token(request: Request) -> str:
 async def verify_token(token: str):
     async with httpx.AsyncClient() as client:
         response = await client.post(
-            f"{config['PB_URL']}/api/collections/users/auth-refresh",
+            f"{os.environ.get('PUBLIC_PB_URL')}/api/collections/users/auth-refresh",
             headers={"Authorization": f"Bearer {token}"},
         )
         if response.status_code == 200:
@@ -65,7 +68,7 @@ async def verify_token(token: str):
     return None
 
 
-@app.post("/generate")
+@app.post("/generation/generate")
 async def generate(data: GenerateRequest, request: Request):
     # Extract token from request header
     token = extract_token(request)
@@ -80,7 +83,7 @@ async def generate(data: GenerateRequest, request: Request):
     async with httpx.AsyncClient() as client:
         # Save user's message to PocketBase
         await client.post(
-            f"{config['PB_URL']}/api/collections/messages/records",
+            f"{os.environ.get('PUBLIC_PB_URL')}/api/collections/messages/records",
             json={
                 "conversation": data.conversationId,
                 "text": data.message,
@@ -93,7 +96,7 @@ async def generate(data: GenerateRequest, request: Request):
 
         # Get the conversation history
         response = await client.get(
-            f"{config['PB_URL']}/api/collections/messages/records",
+            f"{os.environ.get('PUBLIC_PB_URL')}/api/collections/messages/records",
             params={"sort": "-created"},  # Changed from json to params
             headers={
                 "Authorization": f"Bearer {auth_store['token']}",
@@ -102,16 +105,16 @@ async def generate(data: GenerateRequest, request: Request):
         response_data = response.json()
 
     # Generate AI response
-    response_text = await norbert.generate_content_async(response_data["items"])
+    response_text = await generator.generate_content_async(response_data["items"])
 
     async with httpx.AsyncClient() as client:
         # Save AI's response to PocketBase
         await client.post(
-            f"{config['PB_URL']}/api/collections/messages/records",
+            f"{os.environ.get('PUBLIC_PB_URL')}/api/collections/messages/records",
             json={
                 "conversation": data.conversationId,
                 "text": response_text,
-                "role": "norbert",
+                "role": "model",
             },
             headers={"Authorization": f"Bearer {auth_store['token']}"},
         )

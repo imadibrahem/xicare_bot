@@ -1,0 +1,36 @@
+services:
+  pocketbase:
+    build: ./pocketbase
+    command: ["bash", "run-opt-1.3b.sh"]
+    restart: unless-stopped
+    volumes:
+      - ./pocketbase/pb_migrations:/pb/pb_migrations
+  web-interface:
+    image: node:22-alpine:latest
+    working_dir: /app/web-interface
+    env_file: .env
+    command: ["sh", "-c", "npm install && npm run build"]
+    volumes:
+      - ./web-interface:/app/web-interface
+  generate:
+    build: ./generation
+    command: ["fastapi", "run", "app.py"]
+    env_file: .env
+    volumes:
+      - ./generation:/app/generation
+  caddy:
+    image: caddy:2-alpine:latest
+    restart: unless-stopped
+    ports:
+      - 80:80
+      - 443:443
+      - 443:443/udp
+    volumes:
+      - ./web-interface:/app/web-interface
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:
