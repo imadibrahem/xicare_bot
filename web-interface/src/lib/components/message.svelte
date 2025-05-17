@@ -29,28 +29,12 @@
 	bind:this={ref}
 	{...rest}
 >
-	<div class="_chat-message leading-relaxed">{@html marked.parse(text)}</div>
+	<div
+		class="[&_a]:text-muted-foreground [&_a:hover]:text-foreground leading-relaxed [&_a:hover]:underline [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_p]:my-3"
+	>
+		{@html marked.parse(text)}
+	</div>
 	<span class="pt-1 text-xs opacity-80"
 		>{new Date(created).toLocaleTimeString('de-DE', timeOptions)}</span
 	>
 </div>
-
-<style>
-	._chat-message :global(p:first-child) {
-		margin-top: 0;
-	}
-	._chat-message :global(p:last-child) {
-		margin-bottom: 0;
-	}
-	._chat-message :global(p) {
-		margin: 1em 0;
-	}
-
-	._chat-message :global(a) {
-		color: hsl(var(--muted-foreground));
-	}
-	._chat-message :global(a:hover) {
-		color: hsl(var(--foreground));
-		text-decoration: underline;
-	}
-</style>
