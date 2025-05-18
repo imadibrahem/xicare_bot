@@ -45,28 +45,30 @@
 <div class="container flex h-full flex-col px-0">
 	<div class="flex-1">
 		<div class="mx-4 flex h-full flex-col items-center justify-center gap-10 py-4 md:mx-10">
-			<div class="max-w-2xl text-center">
-				<p class="[&:not(:first-child)]:mt-6">
-					Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent nec maximus nisl, vitae
-					faucibus turpis. Donec viverra lacinia dapibus. Etiam laoreet elit enim, ut pellentesque
-					diam egestas sed. Nam feugiat efficitur ultricies. Nunc efficitur sem magna. Etiam rutrum
-					quis erat quis eleifend. In hac habitasse platea dictumst. In id metus mauris. In sed
-					velit dui.
-				</p>
-			</div>
-			<div class="flex w-full flex-col items-center gap-6 text-center">
-				<div class="flex flex-col">
-					<span>Entwicklereinstellungen</span>
-					<span><em>Können nach Beginn des Chats nicht mehr geändert werden</em></span>
+			<div class="flex h-[60vh] w-full flex-col items-center justify-between text-center">
+				<div class="max-w-2xl text-center [&_p:not(:first-child)]:mt-4">
+					<p class="[&:not(:first-child)]:mt-6">
+						Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent nec maximus nisl,
+						vitae faucibus turpis. Donec viverra lacinia dapibus. Etiam laoreet elit enim, ut
+						pellentesque diam egestas sed. Nam feugiat efficitur ultricies. Nunc efficitur sem
+						magna. Etiam rutrum quis erat quis eleifend. In hac habitasse platea dictumst. In id
+						metus mauris. In sed velit dui.
+					</p>
 				</div>
-				<div class="flex w-full flex-col gap-4">
-					<!--  Render settings -->
-					{#each settings as setting}
-						<div class="grid grid-cols-2 gap-4">
-							<span>{setting.description}</span>
-							<Switch bind:checked={setting.value} />
-						</div>
-					{/each}
+				<div class="flex flex-col gap-6">
+					<div>
+						<p>Conversation setting setting</p>
+						<p><em>Can't be changed after conversation has started</em></p>
+					</div>
+					<div class="flex flex-col gap-4">
+						<!--  Render settings -->
+						{#each settings as setting}
+							<div class="grid grid-cols-4 gap-4">
+								<span class="col-span-3">{setting.description}</span>
+								<Switch bind:checked={setting.value} />
+							</div>
+						{/each}
+					</div>
 				</div>
 			</div>
 		</div>
