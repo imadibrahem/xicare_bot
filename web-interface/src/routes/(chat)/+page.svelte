@@ -45,7 +45,9 @@
 <div class="container flex h-full flex-col px-0">
 	<div class="flex-1">
 		<div class="mx-4 flex h-full flex-col items-center justify-center gap-10 py-4 md:mx-10">
-			<div class="flex h-[60vh] w-full flex-col items-center justify-between text-center">
+			<div
+				class="flex min-h-[60vh] w-full flex-col items-center justify-between gap-10 text-center"
+			>
 				<div class="max-w-2xl text-center [&_p:not(:first-child)]:mt-4">
 					<p class="[&:not(:first-child)]:mt-6">
 						Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent nec maximus nisl,
@@ -63,7 +65,7 @@
 					<div class="flex flex-col gap-4">
 						<!--  Render settings -->
 						{#each settings as setting}
-							<div class="grid grid-cols-4 gap-4">
+							<div class="grid grid-cols-4 items-center gap-4">
 								<span class="col-span-3">{setting.description}</span>
 								<Switch bind:checked={setting.value} />
 							</div>
