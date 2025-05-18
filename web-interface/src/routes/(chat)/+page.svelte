@@ -62,11 +62,9 @@
 				<div class="flex w-full flex-col gap-4">
 					<!--  Render settings -->
 					{#each settings as setting}
-						<div class="flex items-center gap-4">
-							<span class="grow-1 w-1/2 shrink-0 text-right">{setting.description}</span>
-							<div class="grow-1 flex w-1/2 shrink-0 justify-start">
-								<Switch bind:checked={setting.value} />
-							</div>
+						<div class="grid grid-cols-2 gap-4">
+							<span>{setting.description}</span>
+							<Switch bind:checked={setting.value} />
 						</div>
 					{/each}
 				</div>
