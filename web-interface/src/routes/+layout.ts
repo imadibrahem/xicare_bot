@@ -21,8 +21,7 @@ export const load: LayoutLoad = async ({ url }) => {
 			await pb.collection('users').authRefresh();
 		} catch {
 			pb.authStore.clear();
-		} finally {
-			redirect(307, '/login');
 		}
+		redirect(307, '/login');
 	}
 };
