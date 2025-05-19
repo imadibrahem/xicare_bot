@@ -19,9 +19,13 @@ export const load: LayoutLoad = async ({ url }) => {
 		try {
 			// Do an auth refresh on every page reload
 			await pb.collection('users').authRefresh();
+			// If refresh worked, currentUser should be updated
+			if (!pb.authStore.isValid) {
+				redirect(307, '/login');
+			}
 		} catch {
 			pb.authStore.clear();
+			redirect(307, '/login');
 		}
-		redirect(307, '/login');
 	}
 };
