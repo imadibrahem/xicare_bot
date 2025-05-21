@@ -105,13 +105,13 @@
 	</Sidebar.Content>
 	<Sidebar.Footer>
 		<Sidebar.Menu>
-			<Sidebar.MenuItem>
+			<!-- <Sidebar.MenuItem>
 				<Sidebar.MenuButton>
 					{#snippet child({ props })}
 						<a href="/about" {...props}>Über das Projekt</a>
 					{/snippet}
 				</Sidebar.MenuButton>
-			</Sidebar.MenuItem>
+			</Sidebar.MenuItem> -->
 			<Sidebar.MenuItem>
 				<Sidebar.MenuButton onclick={logout}>Ausloggen</Sidebar.MenuButton>
 			</Sidebar.MenuItem>

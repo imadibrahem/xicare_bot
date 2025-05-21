@@ -7,13 +7,13 @@
 	import { currentUser, pb } from '$lib/pocketbase.svelte';
 	import { initialMessage } from '$lib/message.svelte';
 
-	let settings = $state([
-		{
-			id: 'setting1',
-			description: 'Einstellung 1',
-			value: false
-		}
-	]);
+	// let settings = $state([
+	// 	{
+	// 		id: 'setting1',
+	// 		description: 'Einstellung 1',
+	// 		value: false
+	// 	}
+	// ]);
 
 	let text = $state('');
 
@@ -25,11 +25,7 @@
 		try {
 			// Create the conversation and navigate to it
 			const conversation = await pb.collection('conversations').create({
-				user: currentUser.record?.id,
-				...settings.reduce((obj: { [key: string]: boolean }, { id, value }) => {
-					obj[id] = value;
-					return obj;
-				}, {})
+				user: currentUser.record?.id
 			});
 			// Set the global message state to transfer the first message to the new conversation
 			initialMessage.text = message;
@@ -45,9 +41,7 @@
 <div class="container flex h-full flex-col px-0">
 	<div class="flex-1">
 		<div class="mx-4 flex h-full flex-col items-center justify-center gap-10 py-4 md:mx-10">
-			<div
-				class="flex min-h-[60vh] w-full flex-col items-center justify-between gap-10 text-center"
-			>
+			<div class="flex min-h-[60vh] w-full flex-col items-center justify-center gap-10 text-center">
 				<div class="max-w-2xl text-center [&_p:not(:first-child)]:mt-4">
 					<p class="[&:not(:first-child)]:mt-6">
 						Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent nec maximus nisl,
@@ -57,13 +51,12 @@
 						metus mauris. In sed velit dui.
 					</p>
 				</div>
-				<div class="flex flex-col gap-6">
+				<!-- <div class="flex flex-col gap-6">
 					<div>
 						<p>Conversation setting setting</p>
 						<p><em>Can't be changed after conversation has started</em></p>
 					</div>
 					<div class="flex flex-col gap-4">
-						<!--  Render settings -->
 						{#each settings as setting}
 							<div class="grid grid-cols-4 items-center gap-4">
 								<span class="col-span-3">{setting.description}</span>
@@ -71,7 +64,7 @@
 							</div>
 						{/each}
 					</div>
-				</div>
+				</div> -->
 			</div>
 		</div>
 	</div>
