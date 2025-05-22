@@ -2,11 +2,11 @@
 	encode
 	# pocketbase
 	handle /_/* {
-		reverse_proxy pocketbase:8090
+		reverse_proxy pocketbase:8080
 	}
 
 	handle /api/* {
-		reverse_proxy pocketbase:8090
+		reverse_proxy pocketbase:8080
 	}
 
 	# generation
