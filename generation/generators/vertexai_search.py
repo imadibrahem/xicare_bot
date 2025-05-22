@@ -1,4 +1,3 @@
-import os
 from typing import Awaitable
 from google import genai
 from google.genai import types
@@ -8,10 +7,8 @@ from google.genai.types import HttpOptions
 class VertexAISearch:
     def __init__(
         self,
-        system_prompt: str,
         project: str,
-        location: str | None = None,
-        datastore: str | None = None,
+        location: str,
     ):
         # Initialize client
         self._client = genai.Client(
@@ -21,20 +18,17 @@ class VertexAISearch:
             http_options=HttpOptions(api_version="v1"),
         )
 
-        # Setup system prompt
-        self._system_instruction = types.Part.from_text(text=system_prompt)
-
-        self._datastore = datastore
-
     def generate_content(
         self,
         history: list[dict[str, str]],
+        system_prompt: str,
         user_role="user",
         model_name="gemini-2.0-flash-001",
-        temp=1.0,
+        temperature=1.0,
         top_p=1.0,
         top_k: int | None = None,
         max_output_tokens=8192,
+        datastore: str | None = None,
         seed: int | None = None,
     ) -> str:
         """
@@ -55,19 +49,29 @@ class VertexAISearch:
         response = self._client.models.generate_content(
             model=model_name,
             contents=self._create_contents(history, user_role),
-            config=self._make_config(temp, top_p, top_k, max_output_tokens, seed),
+            config=self._make_config(
+                system_prompt,
+                temperature,
+                top_p,
+                top_k,
+                max_output_tokens,
+                seed,
+                datastore,
+            ),
         )
         return response.text
 
     async def generate_content_async(
         self,
         history: list[dict[str, str]],
+        system_prompt: str,
         user_role="user",
         model_name="gemini-2.0-flash-001",
-        temp=1.0,
+        temperature=1.0,
         top_p=1.0,
         top_k: int | None = None,
         max_output_tokens=8192,
+        datastore: str | None = None,
         seed: int | None = None,
     ) -> Awaitable[str]:
         """
@@ -88,7 +92,15 @@ class VertexAISearch:
         response = await self._client.aio.models.generate_content(
             model=model_name,
             contents=self._create_contents(history, user_role),
-            config=self._make_config(temp, top_p, top_k, max_output_tokens, seed),
+            config=self._make_config(
+                system_prompt,
+                temperature,
+                top_p,
+                top_k,
+                max_output_tokens,
+                seed,
+                datastore,
+            ),
         )
         return response.text
 
@@ -105,14 +117,16 @@ class VertexAISearch:
 
     def _make_config(
         self,
-        temp: float,
+        system_prompt: str,
+        temperature: float,
         top_p: float | None,
         top_k: int | None,
         max_output_tokens: int,
         seed: int | None,
+        datastore: str | None,
     ) -> types.GenerateContentConfig:
         return types.GenerateContentConfig(
-            temperature=temp,
+            temperature=temperature,
             top_p=top_p,
             top_k=top_k,
             max_output_tokens=max_output_tokens,
@@ -135,14 +149,16 @@ class VertexAISearch:
                     category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_LOW_AND_ABOVE"
                 ),
             ],
-            tools=[
-                types.Tool(
-                    retrieval=types.Retrieval(
-                        vertex_ai_search=types.VertexAISearch(
-                            datastore=os.environ.get("DATASTORE")
+            tools=(
+                [
+                    types.Tool(
+                        retrieval=types.Retrieval(
+                            vertex_ai_search=types.VertexAISearch(datastore=datastore)
                         )
                     )
-                )
-            ],
-            system_instruction=[self.system_instruction],
+                ]
+                if datastore
+                else None
+            ),
+            system_instruction=[types.Part.from_text(text=system_prompt)],
         )
