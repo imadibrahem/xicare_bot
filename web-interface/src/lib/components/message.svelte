@@ -19,22 +19,31 @@
 </script>
 
 <div
+	bind:this={ref}
 	class={cn(
-		{ 'text-right': role === 'user' },
-		{ 'bg-muted rounded-xl': role === 'user' },
-		role === 'user' ? 'self-end' : 'self-start',
-		'flex flex-col gap-0.5 px-4 py-2 md:mx-4',
+		'flex items-start md:mx-4',
+		role === 'user' ? 'justify-end' : 'justify-start',
 		className
 	)}
-	bind:this={ref}
-	{...rest}
 >
+	{#if role !== 'user'}
+		<img src="/img/Chatbot_Logo-128px.png" alt="Logo EA Chatbot" class="w-14 py-4" />
+	{/if}
 	<div
-		class="[&_a]:text-muted-foreground [&_a:hover]:text-foreground leading-relaxed [&_a:hover]:underline [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_p]:my-3"
+		class={cn(
+			{ 'text-right': role === 'user' },
+			{ 'bg-muted rounded-xl': role === 'user' },
+			role === 'user' ? 'self-end' : 'self-start',
+			'flex flex-col gap-0.5 px-4 py-2'
+		)}
 	>
-		{@html marked.parse(text)}
+		<div
+			class="[&_a]:text-muted-foreground [&_a:hover]:text-foreground leading-relaxed [&_a:hover]:underline [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_p]:my-3"
+		>
+			{@html marked.parse(text)}
+		</div>
+		<span class="pt-1 text-xs opacity-80"
+			>{new Date(created).toLocaleTimeString('de-DE', timeOptions)}</span
+		>
 	</div>
-	<span class="pt-1 text-xs opacity-80"
-		>{new Date(created).toLocaleTimeString('de-DE', timeOptions)}</span
-	>
 </div>

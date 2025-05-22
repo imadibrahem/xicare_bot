@@ -32,7 +32,7 @@
 							user: record.user,
 							created: record.created,
 							updated: record.updated,
-							setting1: record.setting1
+							configuration: record.configuration
 						});
 					} else if (action === 'delete') {
 						conversations = conversations.filter((conversation) => conversation.id !== record.id);

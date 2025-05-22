@@ -12,9 +12,9 @@ A dev interface for the new Berlin Administration chatbot using pocketbase and a
 
 ## Todo:
 
-- [ ] Logos
-- [ ] Text von Jean-Chris
-- [ ] Chatbot Logo neben Textbox
+- [x] Logos
+- [x] Text von Jean-Chris
+- [x] Chatbot Logo neben Textbox
 - [x] Überflüssiges Entfernen
 - EA-[1-3] Nutzerinnenname
   - EA-1: u3IFSwGZRvhOqdN

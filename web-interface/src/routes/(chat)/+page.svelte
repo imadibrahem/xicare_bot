@@ -59,13 +59,17 @@
 	<div class="flex-1">
 		<div class="mx-4 flex h-full flex-col items-center justify-center gap-10 py-4 md:mx-10">
 			<div class="flex min-h-[60vh] w-full flex-col items-center justify-center gap-10 text-center">
+				<img src="/img/Chatbot_Icon-256px.png" alt="Icon EA Chatbot" class="w-20" />
 				<div class="max-w-2xl text-center [&_p:not(:first-child)]:mt-4">
 					<p class="[&:not(:first-child)]:mt-6">
-						Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent nec maximus nisl,
-						vitae faucibus turpis. Donec viverra lacinia dapibus. Etiam laoreet elit enim, ut
-						pellentesque diam egestas sed. Nam feugiat efficitur ultricies. Nunc efficitur sem
-						magna. Etiam rutrum quis erat quis eleifend. In hac habitasse platea dictumst. In id
-						metus mauris. In sed velit dui.
+						<strong>
+							SUSI – Ihr digitaler Assistent beim Einheitlichen Ansprechpartner Berlin.
+						</strong>
+						<br />
+						Ich unterstütze Sie dabei, schnell und unkompliziert den passenden Online-Dienst für Ihr
+						Anliegen in Berlin zu finden – ob als Privatperson, Unternehmen oder Organisation.
+						<br />
+						Schön, dass Sie da sind!
 					</p>
 				</div>
 				<!-- <div class="flex flex-col gap-6">

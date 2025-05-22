@@ -59,6 +59,13 @@
 
 <Sidebar.Root bind:sidebarObj={sidebar}>
 	<Sidebar.Header>
+		<div class="flex flex-col items-start gap-4 p-2">
+			<img
+				src="/img/EAP_Logo_4c_de_berlin-256px.jpg"
+				class="w-10/12"
+				alt="Logo Einheitlicher Ansprechpartner (EA) Berlin"
+			/>
+		</div>
 		<Sidebar.Menu>
 			<Sidebar.MenuItem class="mt-4 md:mt-8">
 				<Sidebar.MenuButton>
@@ -115,9 +122,10 @@
 			<Sidebar.MenuItem>
 				<Sidebar.MenuButton onclick={logout}>Ausloggen</Sidebar.MenuButton>
 			</Sidebar.MenuItem>
-			<Sidebar.MenuItem>
-				<LightSwitch />
-			</Sidebar.MenuItem>
 		</Sidebar.Menu>
+		<div class="flex justify-between gap-4 p-2">
+			<img src="/img/B_Logo_M_PW_4C-256px.png" class="w-1/2" alt="Logo Land Berlin" />
+			<LightSwitch />
+		</div>
 	</Sidebar.Footer>
 </Sidebar.Root>
