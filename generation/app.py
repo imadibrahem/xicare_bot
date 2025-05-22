@@ -103,67 +103,72 @@ async def generate(data: GenerateRequest, request: Request):
     if not auth_store:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    async with httpx.AsyncClient() as client:
-        # Save user's message to PocketBase
-        await client.post(
-            f"{os.environ.get('PUBLIC_PB_URL')}/api/collections/messages/records",
-            json={
-                "conversation": data.conversationId,
-                "text": data.message,
-                "role": "user",
-                "rating": 0,
-            },
+    try:
+        async with httpx.AsyncClient() as client:
+            # Save user's message to PocketBase
+            await client.post(
+                f"{os.environ.get('PUBLIC_PB_URL')}/api/collections/messages/records",
+                json={
+                    "conversation": data.conversationId,
+                    "text": data.message,
+                    "role": "user",
+                    "rating": 0,
+                },
+                headers={
+                    "Authorization": f"Bearer {auth_store['token']}",
+                },
+            )
+
+            # Get the chat configuration
+            response = await client.get(
+                f"{os.environ.get('PUBLIC_PB_URL')}/api/collections/conversations/records/{data.conversationId}",
+                params={
+                    "sort": "created",
+                    "expand": "configuration",
+                },
+                headers={
+                    "Authorization": f"Bearer {auth_store['token']}",
+                },
+            )
+            configuration = gen_config(response.json()["expand"]["configuration"])
+
+            # Get the chat history
+            response = await client.get(
+                f"{os.environ.get('PUBLIC_PB_URL')}/api/collections/messages/records",
+                params={"sort": "created"},  # Changed from json to params
+                headers={
+                    "Authorization": f"Bearer {auth_store['token']}",
+                },
+            )
+            messages = response.json()["items"]
+
+        # Generate AI response
+        response_text = await generator.generate_content_async(
+            messages, **configuration
+        )
+
+        async with httpx.AsyncClient() as client:
+            # Save AI's response to PocketBase
+            await client.post(
+                f"{os.environ.get('PUBLIC_PB_URL')}/api/collections/messages/records",
+                json={
+                    "conversation": data.conversationId,
+                    "text": response_text,
+                    "role": "model",
+                },
+                headers={"Authorization": f"Bearer {auth_store['token']}"},
+            )
+
+        # Return generated message with new token
+        return JSONResponse(
             headers={
                 "Authorization": f"Bearer {auth_store['token']}",
+                "Access-Control-Expose-Headers": "Authorization",
             },
+            content={"status": "ok"},
         )
-
-        # Get the chat configuration
-        response = await client.get(
-            f"{os.environ.get('PUBLIC_PB_URL')}/api/collections/conversations/records/{data.conversationId}",
-            params={
-                "sort": "created",
-                "expand": "configuration",
-            },
-            headers={
-                "Authorization": f"Bearer {auth_store['token']}",
-            },
-        )
-        configuration = gen_config(response.json()["expand"]["configuration"])
-
-        # Get the chat history
-        response = await client.get(
-            f"{os.environ.get('PUBLIC_PB_URL')}/api/collections/messages/records",
-            params={"sort": "created"},  # Changed from json to params
-            headers={
-                "Authorization": f"Bearer {auth_store['token']}",
-            },
-        )
-        messages = response.json()["items"]
-
-    # Generate AI response
-    response_text = await generator.generate_content_async(messages, **configuration)
-
-    async with httpx.AsyncClient() as client:
-        # Save AI's response to PocketBase
-        await client.post(
-            f"{os.environ.get('PUBLIC_PB_URL')}/api/collections/messages/records",
-            json={
-                "conversation": data.conversationId,
-                "text": response_text,
-                "role": "model",
-            },
-            headers={"Authorization": f"Bearer {auth_store['token']}"},
-        )
-
-    # Return generated message with new token
-    return JSONResponse(
-        headers={
-            "Authorization": f"Bearer {auth_store['token']}",
-            "Access-Control-Expose-Headers": "Authorization",
-        },
-        content={"status": "ok"},
-    )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating response: {e}")
 
 
 if __name__ == "__main__":
