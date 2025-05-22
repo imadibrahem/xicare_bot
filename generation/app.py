@@ -7,7 +7,7 @@ from pydantic import BaseModel
 import uvicorn
 from dotenv import load_dotenv
 
-from generation.generators.vertexai import VertexAIRAG
+from generators.vertexai import VertexAIRAG
 
 
 # Load environment variables from .env file
