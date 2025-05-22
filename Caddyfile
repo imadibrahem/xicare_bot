@@ -1,6 +1,5 @@
-ea.conviscoach.com {
+{$SITE_ADDRESS} {
 	encode
-	
 	# pocketbase
 	handle /_/* {
 		reverse_proxy pocketbase:8090

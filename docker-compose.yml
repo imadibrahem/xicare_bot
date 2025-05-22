@@ -22,6 +22,7 @@ services:
       - ./generation:/app/generation
   caddy:
     image: caddy:2-alpine
+    env_file: .env
     restart: unless-stopped
     ports:
       - 80:80
