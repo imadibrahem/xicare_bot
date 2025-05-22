@@ -6,9 +6,10 @@ A dev interface for the new Berlin Administration chatbot using pocketbase and a
 
 - Login with `gcloud auth application-default login` before starting scripts that use google vertex ai.
 
-## Pocketbase
+## Production
 
-- Create a superuser on the server using `pocketbase superuser create EMAIL PASS`
+- Rename env.production to .env and fill in values
+- Create a superuser in pocketbase using `pocketbase superuser create EMAIL PASS`
 
 ## Notes
 
@@ -24,5 +25,5 @@ A dev interface for the new Berlin Administration chatbot using pocketbase and a
   - EA-1: u3IFSwGZRvhOqdN
   - EA-2: S3RU1xUTSb5n0Xn
   - EA-3: ihDuFJ07Xfa2OAD
-- [ ] Push it to the server
+- [x] Push it to the server
 - [ ] Daumen hoch oder runter
