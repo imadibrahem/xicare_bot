@@ -1,8 +1,11 @@
 services:
   pocketbase:
     build: ./pocketbase
-    command: ["bash", "run-opt-1.3b.sh"]
+    command: ["/app/pb/pocketbase", "serve", "--http=0.0.0.0:8080"]
     restart: unless-stopped
+    volumes:
+      - ./pb_migrations:/app/pb/pb_migrations
+      - ./pb_data:/app/pb/pb_data
   web-interface:
     image: node:22-alpine:latest
     working_dir: /app/web-interface

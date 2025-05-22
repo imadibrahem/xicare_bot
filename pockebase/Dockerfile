@@ -11,7 +11,7 @@ ADD https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/po
 RUN unzip /tmp/pb.zip -d /app/pb/
 
 # uncomment to copy the local pb_migrations dir into the image
-COPY ./pb_migrations /app/pb/pb_migrations
+# COPY ./pb_migrations /app/pb/pb_migrations
 
 # uncomment to copy the local pb_hooks dir into the image
 # COPY ./pb_hooks /app/pb/pb_hooks
