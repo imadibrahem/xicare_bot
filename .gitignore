@@ -177,6 +177,6 @@ out
 token-*.json
 
 # Pocketbase
-pocketbase
+pocketbase/pocketbase
 pb_data
 pb_migrations
