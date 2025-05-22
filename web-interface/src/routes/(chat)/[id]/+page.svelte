@@ -74,10 +74,21 @@
 							conversation: record.conversation,
 							text: record.text,
 							role: record.role,
-							created: record.created
+							created: record.created,
+							rating: record.rating
 						});
 					} else if (action === 'delete') {
 						messages = messages.filter((message) => message.id !== record.id);
+					} else if (action === 'update') {
+						const index = messages.findIndex((message) => message.id === record.id);
+						messages[index] = {
+							id: record.id,
+							conversation: record.conversation,
+							text: record.text,
+							role: record.role,
+							created: record.created,
+							rating: record.rating
+						};
 					}
 				});
 		} catch (error) {

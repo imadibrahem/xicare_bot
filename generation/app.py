@@ -98,6 +98,7 @@ async def generate(data: GenerateRequest, request: Request):
                 "conversation": data.conversationId,
                 "text": data.message,
                 "role": "user",
+                "rating": 0,
             },
             headers={
                 "Authorization": f"Bearer {auth_store['token']}",
