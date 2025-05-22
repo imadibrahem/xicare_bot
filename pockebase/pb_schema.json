@@ -201,6 +201,139 @@
     }
   },
   {
+    "id": "pbc_620175182",
+    "listRule": "@request.auth.id != \"\"",
+    "viewRule": null,
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null,
+    "name": "configurations",
+    "type": "base",
+    "fields": [
+      {
+        "autogeneratePattern": "[a-z0-9]{15}",
+        "hidden": false,
+        "id": "text3208210256",
+        "max": 15,
+        "min": 15,
+        "name": "id",
+        "pattern": "^[a-z0-9]+$",
+        "presentable": false,
+        "primaryKey": true,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "text3616895705",
+        "max": 0,
+        "min": 0,
+        "name": "model",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "hidden": false,
+        "id": "number3192793708",
+        "max": null,
+        "min": null,
+        "name": "temperature",
+        "onlyInt": false,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "hidden": false,
+        "id": "number2430734000",
+        "max": 1,
+        "min": 0,
+        "name": "top_p",
+        "onlyInt": false,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "hidden": false,
+        "id": "number445106012",
+        "max": null,
+        "min": null,
+        "name": "top_k",
+        "onlyInt": true,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "hidden": false,
+        "id": "number4129561874",
+        "max": 8192,
+        "min": 1,
+        "name": "max_output_tokens",
+        "onlyInt": false,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "text1919015417",
+        "max": 10000,
+        "min": 0,
+        "name": "system_prompt",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": true,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "hidden": false,
+        "id": "bool3814588639",
+        "name": "default",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "bool"
+      },
+      {
+        "hidden": false,
+        "id": "autodate2990389176",
+        "name": "created",
+        "onCreate": true,
+        "onUpdate": false,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      },
+      {
+        "hidden": false,
+        "id": "autodate3332085495",
+        "name": "updated",
+        "onCreate": true,
+        "onUpdate": true,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      }
+    ],
+    "indexes": [],
+    "system": false
+  },
+  {
     "id": "pbc_728114816",
     "listRule": "user = @request.auth.id",
     "viewRule": null,
@@ -238,13 +371,17 @@
         "type": "relation"
       },
       {
+        "cascadeDelete": false,
+        "collectionId": "pbc_620175182",
         "hidden": false,
-        "id": "bool1770424622",
-        "name": "setting1",
+        "id": "relation2783094231",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "configuration",
         "presentable": false,
         "required": false,
         "system": false,
-        "type": "bool"
+        "type": "relation"
       },
       {
         "hidden": false,
