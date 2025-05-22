@@ -2,7 +2,7 @@
 	encode
 
     # pocketbase
-	handle /_/* {
+	handle /_/*, /api/* {
 		reverse_proxy pocketbase:8090
 	}
 
