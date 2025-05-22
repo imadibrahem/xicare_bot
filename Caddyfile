@@ -1,13 +1,17 @@
-{$SITE_ADDRESS} {
+ea.conviscoach.com {
 	encode
-
-    # pocketbase
-	handle /_/*, /api/* {
+	
+	# pocketbase
+	handle /_/* {
 		reverse_proxy pocketbase:8090
 	}
 
-    # generation
-    handle /generation/* {
+	handle /api/* {
+		reverse_proxy pocketbase:8090
+	}
+
+	# generation
+	handle /generation/* {
 		reverse_proxy generation:8000
 	}
 
