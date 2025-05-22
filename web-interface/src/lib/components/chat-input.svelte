@@ -53,7 +53,7 @@
 			name="query"
 			class={cn(
 				className,
-				'bg-secondary focus:border-foreground w-full resize-none self-center overflow-hidden outline-none focus:ring-0'
+				'bg-secondary w-full resize-none self-center overflow-hidden outline-none focus:ring-0'
 			)}
 			placeholder="Geben Sie hier Ihre Frage ein..."
 			autocomplete="off"
@@ -64,7 +64,11 @@
 			rows="1"
 		></textarea>
 		<!-- TODO -->
-		<Button size="icon" class="h-8 w-8 shrink-0 self-end rounded-full" {onclick}>
+		<Button
+			size="icon"
+			class="h-8 w-8 shrink-0 self-end rounded-full bg-[#c41b31] hover:bg-[#c41b31]"
+			{onclick}
+		>
 			<ArrowUp />
 		</Button>
 	</form>
