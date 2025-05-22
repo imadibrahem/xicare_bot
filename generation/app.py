@@ -24,7 +24,7 @@ generator = VertexAIRAG(
 app = FastAPI()
 
 # Add CORS if environment variable is set
-if os.environ.get("CORS"):
+if os.environ.get("PUBLIC_INTERFACE_URL"):
     origins = [
         os.environ.get("PUBLIC_INTERFACE_URL"),
     ]

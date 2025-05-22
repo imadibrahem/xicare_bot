@@ -25,9 +25,6 @@
             "request": "launch",
             "cwd": "${workspaceFolder}/generation",
             "program": "app.py",
-            "env": {
-                "CORS": "true"
-            },
             "console": "integratedTerminal"
         }
     ]
