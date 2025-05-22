@@ -7,7 +7,7 @@ from pydantic import BaseModel
 import uvicorn
 from dotenv import load_dotenv
 
-from generators.vertexai_search import VertexAISearch
+from generation.generators.vertexai import VertexAIRAG
 
 
 # Load environment variables from .env file
@@ -15,7 +15,7 @@ config = load_dotenv()
 
 
 # Get RAG model
-generator = VertexAISearch(
+generator = VertexAIRAG(
     project=os.environ.get("PROJECT_ID"),
     location=os.environ.get("LOCATION"),
 )
@@ -68,13 +68,26 @@ def gen_config(
     return {
         "model_name": config_response["model_name"],
         "system_prompt": config_response["system_prompt"].replace("\r", ""),
-        "datastore": (
-            config_response["datastore"] if config_response["datastore"] else None
-        ),
         "temperature": config_response["temperature"],
         "top_p": config_response["top_p"] if config_response["top_p"] >= 0 else None,
         "top_k": config_response["top_k"] if config_response["top_k"] >= 0 else None,
         "max_output_tokens": config_response["max_output_tokens"],
+        "datastore": (
+            config_response["datastore"] if config_response["datastore"] else None
+        ),
+        "rag_corpus": (
+            config_response["rag_corpus"] if config_response["rag_corpus"] else None
+        ),
+        "rag_similarity_top_k": (
+            config_response["rag_similarity_top_k"]
+            if config_response["top_p"] >= 0
+            else None
+        ),
+        "rag_vector_distance_threshold": (
+            config_response["rag_vector_distance_threshold"]
+            if config_response["top_p"] >= 0
+            else None
+        ),
     }
 
 

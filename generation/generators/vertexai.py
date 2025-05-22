@@ -4,7 +4,7 @@ from google.genai import types
 from google.genai.types import HttpOptions
 
 
-class VertexAISearch:
+class VertexAIRAG:
     def __init__(
         self,
         project: str,
@@ -29,6 +29,9 @@ class VertexAISearch:
         top_k: int | None = None,
         max_output_tokens=8192,
         datastore: str | None = None,
+        rag_corpus: str | None = None,
+        rag_similarity_top_k: int | None = 20,
+        rag_vector_distance_threshold: float | None = 0.5,
         seed: int | None = None,
     ) -> str:
         """
@@ -57,6 +60,9 @@ class VertexAISearch:
                 max_output_tokens,
                 seed,
                 datastore,
+                rag_corpus,
+                rag_similarity_top_k,
+                rag_vector_distance_threshold,
             ),
         )
         return response.text
@@ -72,6 +78,9 @@ class VertexAISearch:
         top_k: int | None = None,
         max_output_tokens=8192,
         datastore: str | None = None,
+        rag_corpus: str | None = None,
+        rag_similarity_top_k: int | None = 20,
+        rag_vector_distance_threshold: float | None = 0.5,
         seed: int | None = None,
     ) -> Awaitable[str]:
         """
@@ -100,6 +109,9 @@ class VertexAISearch:
                 max_output_tokens,
                 seed,
                 datastore,
+                rag_corpus,
+                rag_similarity_top_k,
+                rag_vector_distance_threshold,
             ),
         )
         return response.text
@@ -124,7 +136,35 @@ class VertexAISearch:
         max_output_tokens: int,
         seed: int | None,
         datastore: str | None,
+        rag_corpus: str | None,
+        rag_similarity_top_k: int | None,
+        rag_vector_distance_threshold: float | None,
     ) -> types.GenerateContentConfig:
+        tools = None
+        if datastore:
+            tools = [
+                types.Tool(
+                    retrieval=types.Retrieval(
+                        vertex_ai_search=types.VertexAISearch(datastore=datastore)
+                    )
+                )
+            ]
+        elif rag_corpus:
+            [
+                types.Tool(
+                    retrieval=types.Retrieval(
+                        vertex_rag_store=types.VertexRagStore(
+                            rag_resources=[
+                                types.VertexRagStoreRagResource(
+                                    rag_corpus="projects/convis/locations/europe-west4/ragCorpora/2305843009213693952"
+                                )
+                            ],
+                            similarity_top_k=rag_similarity_top_k,
+                            vector_distance_threshold=rag_vector_distance_threshold,
+                        )
+                    )
+                )
+            ]
         return types.GenerateContentConfig(
             temperature=temperature,
             top_p=top_p,
