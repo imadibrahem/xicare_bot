@@ -54,7 +54,7 @@ def extract_token(request: Request) -> str:
 async def verify_token(token: str):
     async with httpx.AsyncClient() as client:
         response = await client.post(
-            f"{os.environ.get('PUBLIC_PB_URL')}/api/collections/users/auth-refresh",
+            f"{os.environ.get('GENERATION_PB_URL')}/api/collections/users/auth-refresh",
             headers={"Authorization": f"Bearer {token}"},
         )
         if response.status_code == 200:
@@ -107,7 +107,7 @@ async def generate(data: GenerateRequest, request: Request):
         async with httpx.AsyncClient() as client:
             # Save user's message to PocketBase
             await client.post(
-                f"{os.environ.get('PUBLIC_PB_URL')}/api/collections/messages/records",
+                f"{os.environ.get('GENERATION_PB_URL')}/api/collections/messages/records",
                 json={
                     "conversation": data.conversationId,
                     "text": data.message,
@@ -121,7 +121,7 @@ async def generate(data: GenerateRequest, request: Request):
 
             # Get the chat configuration
             response = await client.get(
-                f"{os.environ.get('PUBLIC_PB_URL')}/api/collections/conversations/records/{data.conversationId}",
+                f"{os.environ.get('GENERATION_PB_URL')}/api/collections/conversations/records/{data.conversationId}",
                 params={
                     "sort": "created",
                     "expand": "configuration",
@@ -134,7 +134,7 @@ async def generate(data: GenerateRequest, request: Request):
 
             # Get the chat history
             response = await client.get(
-                f"{os.environ.get('PUBLIC_PB_URL')}/api/collections/messages/records",
+                f"{os.environ.get('GENERATION_PB_URL')}/api/collections/messages/records",
                 params={"sort": "created"},  # Changed from json to params
                 headers={
                     "Authorization": f"Bearer {auth_store['token']}",
@@ -150,7 +150,7 @@ async def generate(data: GenerateRequest, request: Request):
         async with httpx.AsyncClient() as client:
             # Save AI's response to PocketBase
             await client.post(
-                f"{os.environ.get('PUBLIC_PB_URL')}/api/collections/messages/records",
+                f"{os.environ.get('GENERATION_PB_URL')}/api/collections/messages/records",
                 json={
                     "conversation": data.conversationId,
                     "text": response_text,
