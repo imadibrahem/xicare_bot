@@ -19,8 +19,9 @@
 
 		try {
 			await pb.collection('users').authWithPassword(username, password);
-		} catch {
+		} catch (error) {
 			toast.error('Falscher Nutzername oder falsches Passwort');
+			console.log('Error authenticating:', error);
 		}
 		username = '';
 		password = '';
