@@ -476,6 +476,18 @@
       },
       {
         "hidden": false,
+        "id": "number3632866850",
+        "max": 1,
+        "min": -1,
+        "name": "rating",
+        "onlyInt": true,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "hidden": false,
         "id": "autodate2990389176",
         "name": "created",
         "onCreate": true,
