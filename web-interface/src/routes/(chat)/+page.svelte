@@ -1,11 +1,13 @@
 <script lang="ts">
 	import ChatInput from '$lib/components/chat-input.svelte';
-	import { Switch } from '$lib/components/ui/switch/index';
+	// import { Switch } from '$lib/components/ui/switch/index';
 
 	import { goto } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import { currentUser, pb } from '$lib/pocketbase.svelte';
 	import { initialMessage } from '$lib/message.svelte';
+
+	import type { Conversation, Configuration } from '$lib/types';
 
 	// let settings = $state([
 	// 	{
@@ -23,9 +25,24 @@
 		text = '';
 
 		try {
+			// Get default config
+			const configurations = await pb.collection('configurations').getList<Configuration>(1, 1, {
+				filter: 'default = true',
+				fetch: fetch
+			});
+
+			// The first item in the randomized list is the random entry
+			let configuration: Configuration;
+			if (configurations.items.length > 0) {
+				configuration = configurations.items[0];
+			} else {
+				throw Error('No default configuration found.');
+			}
+
 			// Create the conversation and navigate to it
-			const conversation = await pb.collection('conversations').create({
-				user: currentUser.record?.id
+			const conversation = await pb.collection('conversations').create<Conversation>({
+				user: currentUser.record?.id,
+				configuration: configuration.id
 			});
 			// Set the global message state to transfer the first message to the new conversation
 			initialMessage.text = message;

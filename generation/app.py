@@ -7,23 +7,17 @@ from pydantic import BaseModel
 import uvicorn
 from dotenv import load_dotenv
 
-from generators.dummy import Dummy
+from generators.vertexai_search import VertexAISearch
 
 
 # Load environment variables from .env file
 config = load_dotenv()
 
-SYSTEM_PROMPT = """"""
-
 
 # Get RAG model
-generator = Dummy(
-    system_prompt=SYSTEM_PROMPT,
+generator = VertexAISearch(
     project=os.environ.get("PROJECT_ID"),
     location=os.environ.get("LOCATION"),
-    temp=1.0,
-    top_p=1.0,
-    max_output_tokens=8192,
 )
 
 # Initializing FastAPI
@@ -68,6 +62,22 @@ async def verify_token(token: str):
     return None
 
 
+def gen_config(
+    config_response: dict[str, str | int | float],
+) -> dict[str, str | int | float]:
+    return {
+        "model_name": config_response["model_name"],
+        "system_prompt": config_response["system_prompt"].replace("\r", ""),
+        "datastore": (
+            config_response["datastore"] if config_response["datastore"] else None
+        ),
+        "temperature": config_response["temperature"],
+        "top_p": config_response["top_p"] if config_response["top_p"] >= 0 else None,
+        "top_k": config_response["top_k"] if config_response["top_k"] >= 0 else None,
+        "max_output_tokens": config_response["max_output_tokens"],
+    }
+
+
 @app.post("/generation/generate")
 async def generate(data: GenerateRequest, request: Request):
     # Extract token from request header
@@ -94,7 +104,20 @@ async def generate(data: GenerateRequest, request: Request):
             },
         )
 
-        # Get the conversation history
+        # Get the chat configuration
+        response = await client.get(
+            f"{os.environ.get('PUBLIC_PB_URL')}/api/collections/conversations/records/{data.conversationId}",
+            params={
+                "sort": "created",
+                "expand": "configuration",
+            },
+            headers={
+                "Authorization": f"Bearer {auth_store['token']}",
+            },
+        )
+        configuration = gen_config(response.json()["expand"]["configuration"])
+
+        # Get the chat history
         response = await client.get(
             f"{os.environ.get('PUBLIC_PB_URL')}/api/collections/messages/records",
             params={"sort": "created"},  # Changed from json to params
@@ -102,10 +125,10 @@ async def generate(data: GenerateRequest, request: Request):
                 "Authorization": f"Bearer {auth_store['token']}",
             },
         )
-        response_data = response.json()
+        messages = response.json()["items"]
 
     # Generate AI response
-    response_text = await generator.generate_content_async(response_data["items"])
+    response_text = await generator.generate_content_async(messages, **configuration)
 
     async with httpx.AsyncClient() as client:
         # Save AI's response to PocketBase

@@ -6,6 +6,7 @@ export interface Message {
 	text: string;
 	role: Role;
 	created: string;
+	rating: number;
 }
 
 export interface Conversation {
@@ -13,5 +14,11 @@ export interface Conversation {
 	user: string;
 	created: string;
 	updated: string;
-	setting1: boolean;
+	// setting1: boolean;
+	configuration: string;
+}
+
+export interface Configuration {
+	id: string;
+	default: boolean;
 }
