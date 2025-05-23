@@ -150,7 +150,7 @@ class VertexAIRAG:
                 )
             ]
         elif rag_corpus:
-            [
+            tools = [
                 types.Tool(
                     retrieval=types.Retrieval(
                         vertex_rag_store=types.VertexRagStore(
@@ -189,16 +189,6 @@ class VertexAIRAG:
                     category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_LOW_AND_ABOVE"
                 ),
             ],
-            tools=(
-                [
-                    types.Tool(
-                        retrieval=types.Retrieval(
-                            vertex_ai_search=types.VertexAISearch(datastore=datastore)
-                        )
-                    )
-                ]
-                if datastore
-                else None
-            ),
+            tools=tools,
             system_instruction=[types.Part.from_text(text=system_prompt)],
         )
