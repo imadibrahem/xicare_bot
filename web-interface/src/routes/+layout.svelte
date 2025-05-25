@@ -8,5 +8,5 @@
 </script>
 
 <Toaster />
-<ModeWatcher />
+<ModeWatcher defaultMode="light" />
 {@render children()}
