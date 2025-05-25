@@ -6,6 +6,16 @@
 	import type { SvelteHTMLElements } from 'svelte/elements';
 	import type { WithElementRef } from 'bits-ui';
 
+	// Configure marked to open links in new tabs
+	marked.use({
+		renderer: {
+			link({ href, title, text }) {
+				const titleAttr = title ? `title="${title}"` : '';
+				return `<a href="${href}" ${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
+			}
+		}
+	});
+
 	const timeOptions: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' };
 
 	let {
@@ -38,7 +48,7 @@
 		)}
 	>
 		<div
-			class="[&_a]:text-muted-foreground [&_a:hover]:text-foreground leading-relaxed [&_a:hover]:underline [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_p]:my-3"
+			class="[&_a:hover]:text-foreground leading-relaxed [&_a:hover]:underline [&_a]:text-[#c41b31] [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_p]:my-3"
 		>
 			{@html marked.parse(text)}
 		</div>
