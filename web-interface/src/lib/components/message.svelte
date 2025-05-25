@@ -48,7 +48,7 @@
 		)}
 	>
 		<div
-			class="[&_a:hover]:text-foreground leading-relaxed [&_a:hover]:underline [&_a]:text-[#c41b31] [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_p]:my-3"
+			class="[&_a:hover]:text-foreground leading-relaxed [&_a:hover]:underline [&_a]:text-[#c41b31] [&_li]:my-1 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_p]:my-3 [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-5"
 		>
 			{@html marked.parse(text)}
 		</div>
