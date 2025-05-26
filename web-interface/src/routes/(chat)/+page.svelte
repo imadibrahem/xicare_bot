@@ -59,7 +59,7 @@
 	<div class="flex-1">
 		<div class="mx-4 flex h-full flex-col items-center justify-center gap-10 py-4 md:mx-10">
 			<div class="flex min-h-[60vh] w-full flex-col items-center justify-center gap-10 text-center">
-				<img src="/img/Chatbot_Icon-256px.png" alt="Icon EA Chatbot" class="w-20" />
+				<enhanced:img src="$lib/img/Chatbot_Icon.png" alt="Icon EA Chatbot" class="w-20" />
 				<div class="max-w-2xl text-center [&_p:not(:first-child)]:mt-4">
 					<p class="[&:not(:first-child)]:mt-6">
 						<strong>

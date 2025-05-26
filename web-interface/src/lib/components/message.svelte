@@ -37,7 +37,7 @@
 	)}
 >
 	{#if role !== 'user'}
-		<img src="/img/Chatbot_Logo-128px.png" alt="Logo EA Chatbot" class="w-14 py-4" />
+		<enhanced:img src="$lib/img/Chatbot_Logo.png" alt="Logo EA Chatbot" class="w-14 py-4" />
 	{/if}
 	<div
 		class={cn(
