@@ -44,7 +44,7 @@
 	{id}
 >
 	{#if role !== 'user'}
-		<div class="w-14 shrink-0 py-4">
+		<div class="w-8 shrink-0 py-4 md:w-14">
 			<enhanced:img src="$lib/img/Chatbot_Logo.png" alt="Logo EA Chatbot" />
 		</div>
 	{/if}
@@ -61,7 +61,7 @@
 		>
 			{@html marked.parse(text)}
 		</div>
-		<div class="flex justify-between">
+		<div class={cn('flex gap-4 md:gap-10', role !== 'user' ? 'justify-between' : 'justify-end')}>
 			<span class="pt-1 text-xs opacity-80">
 				{new Date(created).toLocaleTimeString('de-DE', timeOptions)}
 			</span>

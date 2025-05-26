@@ -60,7 +60,7 @@
 		onfocus={focusTextarea}
 		class={cn(
 			className,
-			'bg-secondary border-foreground pointer-events-auto flex gap-x-4 rounded-xl border-[2px] p-4 dark:border-[1px]'
+			'bg-secondary border-foreground pointer-events-auto flex gap-x-4 rounded-xl border-2 p-4 dark:border-[1px]'
 		)}
 		{...rest}
 	>

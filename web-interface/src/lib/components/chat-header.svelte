@@ -20,7 +20,7 @@
 			})) as Message[];
 			copyMessagesToClipboard(messages);
 
-			toast('In die Zwischenablage kopiert');
+			toast.success('In die Zwischenablage kopiert');
 		} catch (error) {
 			toast.error('Fehler beim Kopieren in die Zwischenablage');
 			console.error('Failed to copy messages to clipboard:', error);
