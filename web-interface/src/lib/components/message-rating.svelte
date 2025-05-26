@@ -15,17 +15,27 @@
 		$props();
 
 	const setRating = async (rating: number) => {
-		await pb
-			.collection('messages')
-			.update<Message>(id, { conversation, text, role, rating: rating, comment: commentText });
+		try {
+			await pb
+				.collection('messages')
+				.update<Message>(id, { conversation, text, role, rating: rating, comment: commentText });
+		} catch (error) {
+			toast.error('Fehler beim Speichern der Wertung');
+			console.error('Failed to to save rating to database:', error);
+		}
 	};
 
 	let commentText = $state(comment);
 	const submitComment = async () => {
-		await pb
-			.collection('messages')
-			.update<Message>(id, { conversation, text, role, rating: rating, comment: commentText });
-		toast.success('Kommentar gespeichert');
+		try {
+			await pb
+				.collection('messages')
+				.update<Message>(id, { conversation, text, role, rating: rating, comment: commentText });
+			toast.success('Kommentar gespeichert');
+		} catch (error) {
+			toast.error('Fehler beim Speichern des Kommentars');
+			console.error('Failed to to save comment to database:', error);
+		}
 	};
 </script>
 
