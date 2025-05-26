@@ -66,7 +66,7 @@
 		<!-- TODO -->
 		<Button
 			size="icon"
-			class="h-8 w-8 shrink-0 self-end rounded-full bg-[#c41b31] hover:bg-[#c41b31]"
+			class="hover:bg-foreground h-8 w-8 shrink-0 self-end rounded-full bg-[#c41b31]"
 			{onclick}
 		>
 			<ArrowUp />
