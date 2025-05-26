@@ -21,9 +21,14 @@ A dev interface for the new Berlin Administration chatbot using pocketbase and a
 - [x] Text von Jean-Chris
 - [x] Chatbot Logo neben Textbox
 - [x] Überflüssiges Entfernen
-- EA-[1-3] Nutzerinnenname
-  - EA-1: u3IFSwGZRvhOqdN
-  - EA-2: S3RU1xUTSb5n0Xn
-  - EA-3: ihDuFJ07Xfa2OAD
 - [x] Push it to the server
-- [ ] Daumen hoch oder runter
+
+- [x] Enter funktion
+- [x] EA Logo
+- [x] EA-[1-3] Nutzerinnenname
+- [x] Safety settings in config
+- [x] enhance image
+- [x] Daumen hoch oder runter
+- [x] Kommentar funktion
+- [x] Auswertungscript
+- [x] Lukas github
