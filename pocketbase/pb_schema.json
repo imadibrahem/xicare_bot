@@ -931,6 +931,65 @@
       },
       {
         "hidden": false,
+        "id": "number3193444616",
+        "max": 3,
+        "min": 0,
+        "name": "block_hate_speech",
+        "onlyInt": true,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "hidden": false,
+        "id": "number3429403344",
+        "max": 3,
+        "min": 0,
+        "name": "block_dangerous_content",
+        "onlyInt": true,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "hidden": false,
+        "id": "number1151348609",
+        "max": 3,
+        "min": 0,
+        "name": "block_sexually_explicit_content",
+        "onlyInt": true,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "hidden": false,
+        "id": "number264181621",
+        "max": 3,
+        "min": 0,
+        "name": "block_harassment_content",
+        "onlyInt": true,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "convertURLs": false,
+        "hidden": true,
+        "id": "editor2490651244",
+        "maxSize": 0,
+        "name": "comment",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "editor"
+      },
+      {
+        "hidden": false,
         "id": "autodate2990389176",
         "name": "created",
         "onCreate": true,
@@ -1105,6 +1164,20 @@
         "required": false,
         "system": false,
         "type": "number"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "text2490651244",
+        "max": 0,
+        "min": 0,
+        "name": "comment",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
       },
       {
         "hidden": false,

@@ -1,7 +1,14 @@
 from typing import Awaitable
 from google import genai
 from google.genai import types
-from google.genai.types import HttpOptions
+from google.genai.types import HttpOptions, HarmBlockThreshold
+
+harm_thresholds = [
+    "BLOCK_NONE",
+    "BLOCK_ONLY_HIGH",
+    "BLOCK_MEDIUM_AND_ABOVE",
+    "BLOCK_LOW_AND_ABOVE",
+]
 
 
 class VertexAIRAG:
@@ -32,6 +39,10 @@ class VertexAIRAG:
         rag_corpus: str | None = None,
         rag_similarity_top_k: int | None = 20,
         rag_vector_distance_threshold: float | None = 0.5,
+        block_hate_speech=0,
+        block_dangerous_content=0,
+        block_sexually_explicit_content=0,
+        block_harassment_content=0,
         seed: int | None = None,
     ) -> str:
         """
@@ -63,6 +74,10 @@ class VertexAIRAG:
                 rag_corpus,
                 rag_similarity_top_k,
                 rag_vector_distance_threshold,
+                block_hate_speech,
+                block_dangerous_content,
+                block_sexually_explicit_content,
+                block_harassment_content,
             ),
         )
         return response.text
@@ -81,6 +96,10 @@ class VertexAIRAG:
         rag_corpus: str | None = None,
         rag_similarity_top_k: int | None = 20,
         rag_vector_distance_threshold: float | None = 0.5,
+        block_hate_speech=0,
+        block_dangerous_content=0,
+        block_sexually_explicit_content=0,
+        block_harassment_content=0,
         seed: int | None = None,
     ) -> Awaitable[str]:
         """
@@ -112,6 +131,10 @@ class VertexAIRAG:
                 rag_corpus,
                 rag_similarity_top_k,
                 rag_vector_distance_threshold,
+                block_hate_speech,
+                block_dangerous_content,
+                block_sexually_explicit_content,
+                block_harassment_content,
             ),
         )
         return response.text
@@ -139,6 +162,10 @@ class VertexAIRAG:
         rag_corpus: str | None,
         rag_similarity_top_k: int | None,
         rag_vector_distance_threshold: float | None,
+        block_hate_speech: int,
+        block_dangerous_content: int,
+        block_sexually_explicit_content: int,
+        block_harassment_content: int,
     ) -> types.GenerateContentConfig:
         tools = None
         if datastore:
@@ -175,18 +202,19 @@ class VertexAIRAG:
             safety_settings=[
                 types.SafetySetting(
                     category="HARM_CATEGORY_HATE_SPEECH",
-                    threshold="BLOCK_LOW_AND_ABOVE",
+                    threshold=harm_thresholds[block_hate_speech],
                 ),
                 types.SafetySetting(
                     category="HARM_CATEGORY_DANGEROUS_CONTENT",
-                    threshold="BLOCK_LOW_AND_ABOVE",
+                    threshold=harm_thresholds[block_dangerous_content],
                 ),
                 types.SafetySetting(
                     category="HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                    threshold="BLOCK_LOW_AND_ABOVE",
+                    threshold=harm_thresholds[block_sexually_explicit_content],
                 ),
                 types.SafetySetting(
-                    category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_LOW_AND_ABOVE"
+                    category="HARM_CATEGORY_HARASSMENT",
+                    threshold=harm_thresholds[block_harassment_content],
                 ),
             ],
             tools=tools,

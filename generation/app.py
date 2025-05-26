@@ -88,6 +88,12 @@ def gen_config(
             if config_response["top_p"] >= 0
             else None
         ),
+        "block_hate_speech": config_response["block_hate_speech"],
+        "block_dangerous_content": config_response["block_dangerous_content"],
+        "block_sexually_explicit_content": config_response[
+            "block_sexually_explicit_content"
+        ],
+        "block_harassment_content": config_response["block_harassment_content"],
     }
 
 
