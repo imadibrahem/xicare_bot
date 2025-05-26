@@ -26,6 +26,7 @@
 	};
 
 	let commentText = $state(comment);
+	// svelte-ignore non_reactive_update
 	let commentInput: HTMLInputElement; // Reference to input element
 
 	const submitComment = async () => {
