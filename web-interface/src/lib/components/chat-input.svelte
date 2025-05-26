@@ -19,6 +19,7 @@
 	}: HTMLFormAttributes & ChatInputProps = $props();
 
 	let textarea: HTMLTextAreaElement;
+	let form: HTMLFormElement;
 
 	// Adjust textarea so it is always as high as text
 	const adjustHeight = () => {
@@ -28,13 +29,24 @@
 		}
 	};
 
+	// Focus the textarea when form is clicked or focused
+	const focusTextarea = () => {
+		if (textarea) {
+			textarea.focus();
+		}
+	};
+
 	// Ensure onclick is defined and properly handled
 	const handleKeyDown = (event: KeyboardEvent) => {
-		if (event.key === 'Enter' && event.shiftKey) {
-			event.preventDefault(); // Prevent default behavior of Enter key
-			if (onclick) {
-				onclick();
+		if (event.key === 'Enter') {
+			if (!event.shiftKey) {
+				// Plain Enter - submit the form
+				event.preventDefault();
+				if (onclick) {
+					onclick();
+				}
 			}
+			// Shift+Enter - let default behavior happen (new line)
 		}
 	};
 </script>
@@ -43,6 +55,9 @@
 	class="from-background pointer-events-none sticky bottom-0 -mt-14 shrink-0 resize-none bg-gradient-to-t from-50% to-transparent px-4 pb-10 pt-14 md:px-10"
 >
 	<form
+		bind:this={form}
+		onclick={focusTextarea}
+		onfocus={focusTextarea}
 		class={cn(
 			className,
 			'bg-secondary border-foreground pointer-events-auto flex gap-x-4 rounded-xl border-[2px] p-4 dark:border-[1px]'
