@@ -1093,7 +1093,7 @@
     "listRule": "conversation.user = @request.auth.id",
     "viewRule": null,
     "createRule": "conversation.user = @request.auth.id",
-    "updateRule": null,
+    "updateRule": "conversation.user = @request.auth.id",
     "deleteRule": "conversation.user = @request.auth.id",
     "name": "messages",
     "type": "base",

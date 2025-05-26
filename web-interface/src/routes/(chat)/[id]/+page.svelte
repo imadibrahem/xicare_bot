@@ -75,7 +75,8 @@
 							text: record.text,
 							role: record.role,
 							created: record.created,
-							rating: record.rating
+							rating: record.rating,
+							comment: record.comment
 						});
 					} else if (action === 'delete') {
 						messages = messages.filter((message) => message.id !== record.id);
@@ -87,7 +88,8 @@
 							text: record.text,
 							role: record.role,
 							created: record.created,
-							rating: record.rating
+							rating: record.rating,
+							comment: record.comment
 						};
 					}
 				});

@@ -7,6 +7,7 @@ export interface Message {
 	role: Role;
 	created: string;
 	rating: number;
+	comment: string;
 }
 
 export interface Conversation {

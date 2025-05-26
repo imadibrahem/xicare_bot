@@ -1,4 +1,6 @@
 <script lang="ts">
+	import MessageRating from './message-rating.svelte';
+
 	import { marked } from 'marked';
 	import { cn } from '$lib/utils';
 
@@ -19,9 +21,13 @@
 	const timeOptions: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' };
 
 	let {
+		id,
+		conversation,
 		text,
 		created,
 		role,
+		rating,
+		comment,
 		class: className,
 		ref = $bindable(null),
 		...rest
@@ -31,13 +37,16 @@
 <div
 	bind:this={ref}
 	class={cn(
-		'flex items-start md:mx-4',
+		'group/message flex items-start md:mx-4',
 		role === 'user' ? 'justify-end' : 'justify-start',
 		className
 	)}
+	{id}
 >
 	{#if role !== 'user'}
-		<enhanced:img src="$lib/img/Chatbot_Logo.png" alt="Logo EA Chatbot" class="w-14 py-4" />
+		<div class="w-14 shrink-0 py-4">
+			<enhanced:img src="$lib/img/Chatbot_Logo.png" alt="Logo EA Chatbot" />
+		</div>
 	{/if}
 	<div
 		class={cn(
@@ -52,8 +61,13 @@
 		>
 			{@html marked.parse(text)}
 		</div>
-		<span class="pt-1 text-xs opacity-80"
-			>{new Date(created).toLocaleTimeString('de-DE', timeOptions)}</span
-		>
+		<div class="flex justify-between">
+			<span class="pt-1 text-xs opacity-80">
+				{new Date(created).toLocaleTimeString('de-DE', timeOptions)}
+			</span>
+			{#if role !== 'user' && id}
+				<MessageRating {id} {conversation} {text} {role} {rating} {comment} />
+			{/if}
+		</div>
 	</div>
 </div>
