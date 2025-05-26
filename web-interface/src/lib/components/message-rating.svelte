@@ -26,12 +26,15 @@
 	};
 
 	let commentText = $state(comment);
+	let commentInput: HTMLInputElement; // Reference to input element
+
 	const submitComment = async () => {
 		try {
 			await pb
 				.collection('messages')
 				.update<Message>(id, { conversation, text, role, rating: rating, comment: commentText });
 			toast.success('Kommentar gespeichert');
+			commentInput.blur(); // Remove focus from input
 		} catch (error) {
 			toast.error('Fehler beim Speichern des Kommentars');
 			console.error('Failed to to save comment to database:', error);
@@ -82,6 +85,8 @@
 				type="text"
 				placeholder="(Optionale) Details..."
 				bind:value={commentText}
+				bind:this={commentInput}
+				onkeydown={(e) => e.key === 'Enter' && submitComment()}
 			/>
 			<button
 				class="bg-muted hover:bg-muted-foreground hover:text-background flex w-5 items-center justify-center [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"
