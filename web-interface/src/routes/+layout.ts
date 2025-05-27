@@ -5,14 +5,14 @@ import type { LayoutLoad } from './$types';
 
 export const ssr = false;
 
-export const load: LayoutLoad = async ({ url }) => {
+export const load: LayoutLoad = async ({ url, fetch }) => {
 	const publicRoutes = ['/login'];
 	const isPublicRoute = publicRoutes.some((route) => url.pathname.startsWith(route));
 
 	// For non-public routes, try to refresh auth first before any redirects
 	if (!isPublicRoute) {
 		try {
-			await pb.collection('users').authRefresh();
+			await pb.collection('users').authRefresh({ fetch: fetch });
 		} catch {
 			pb.authStore.clear();
 			redirect(307, '/login');
