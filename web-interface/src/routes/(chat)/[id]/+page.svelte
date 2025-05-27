@@ -173,6 +173,7 @@
 	</div>
 	<ChatInput
 		bind:text
+		disabled={messages.at(-1)?.role === 'user' || generating}
 		onclick={() => {
 			if (text) generateResponse();
 		}}

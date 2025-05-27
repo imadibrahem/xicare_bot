@@ -8,12 +8,14 @@
 
 	interface ChatInputProps {
 		text?: string;
+		disabled: boolean;
 		onclick?: () => void;
 	}
 
 	let {
 		class: className,
 		text = $bindable(''),
+		disabled = false,
 		onclick,
 		...rest
 	}: HTMLFormAttributes & ChatInputProps = $props();
@@ -38,7 +40,7 @@
 
 	// Ensure onclick is defined and properly handled
 	const handleKeyDown = (event: KeyboardEvent) => {
-		if (event.key === 'Enter') {
+		if (event.key === 'Enter' && !disabled) {
 			if (!event.shiftKey) {
 				// Plain Enter - submit the form
 				event.preventDefault();
@@ -49,6 +51,8 @@
 			// Shift+Enter - let default behavior happen (new line)
 		}
 	};
+
+	$inspect(disabled);
 </script>
 
 <div
@@ -81,7 +85,10 @@
 		<!-- TODO -->
 		<Button
 			size="icon"
-			class="hover:bg-foreground h-8 w-8 shrink-0 self-end rounded-full bg-[#c41b31]"
+			class={cn(
+				' h-8 w-8 shrink-0 self-end rounded-full',
+				disabled ? 'bg-muted-foreground pointer-events-none' : 'hover:bg-foreground bg-[#c41b31]'
+			)}
 			{onclick}
 		>
 			<ArrowUp />
