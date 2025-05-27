@@ -51,8 +51,6 @@
 			// Shift+Enter - let default behavior happen (new line)
 		}
 	};
-
-	$inspect(disabled);
 </script>
 
 <div
