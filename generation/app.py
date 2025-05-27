@@ -104,10 +104,8 @@ async def generate(data: GenerateRequest, request: Request):
     if not token:
         raise HTTPException(status_code=401, detail="Missing token")
 
-    # refresh auth with token (generates new token)
-    auth_store = await verify_token(token)
-    if not auth_store:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    # Use token directly without refreshing
+    auth_header = {"Authorization": f"Bearer {token}"}
 
     async with httpx.AsyncClient() as client:
         # Save user's message to PocketBase
@@ -119,9 +117,7 @@ async def generate(data: GenerateRequest, request: Request):
                 "role": "user",
                 "rating": 0,
             },
-            headers={
-                "Authorization": f"Bearer {auth_store['token']}",
-            },
+            headers=auth_header,
         )
 
         # Get the chat configuration
@@ -131,9 +127,7 @@ async def generate(data: GenerateRequest, request: Request):
                 "sort": "created",
                 "expand": "configuration",
             },
-            headers={
-                "Authorization": f"Bearer {auth_store['token']}",
-            },
+            headers=auth_header,
         )
         configuration = gen_config(response.json()["expand"]["configuration"])
 
@@ -141,9 +135,7 @@ async def generate(data: GenerateRequest, request: Request):
         response = await client.get(
             f"{os.environ.get('GENERATION_PB_URL')}/api/collections/messages/records",
             params={"sort": "created"},  # Changed from json to params
-            headers={
-                "Authorization": f"Bearer {auth_store['token']}",
-            },
+            headers=auth_header,
         )
         messages = response.json()["items"]
 
@@ -159,17 +151,11 @@ async def generate(data: GenerateRequest, request: Request):
                 "text": response_text,
                 "role": "model",
             },
-            headers={"Authorization": f"Bearer {auth_store['token']}"},
+            headers=auth_header,
         )
 
     # Return generated message with new token
-    return JSONResponse(
-        headers={
-            "Authorization": f"Bearer {auth_store['token']}",
-            "Access-Control-Expose-Headers": "Authorization",
-        },
-        content={"status": "ok"},
-    )
+    return JSONResponse(content={"status": "ok"})
 
 
 if __name__ == "__main__":

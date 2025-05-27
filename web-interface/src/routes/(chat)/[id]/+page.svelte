@@ -33,26 +33,25 @@
 		// Send message to generation endpoint with JWT
 		generating = true;
 		try {
+			// Refresh token before sending request
+			await pb.collection('users').authRefresh();
+
 			const response = await fetch(`${PUBLIC_GEN_URL}/generation/generate`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					Authorization: `Bearer ${currentUser.store.token}`
+					Authorization: `Bearer ${pb.authStore.token}`
 				},
 				body: JSON.stringify({ conversationId: page.params.id, message: messageText })
 			});
 			if (response.status !== 200) {
 				toast.error('Fehler beim Generieren der Nachricht');
 			}
-			generating = false;
-			const token = response.headers.get('Authorization');
-			if (token) {
-				pb.authStore.save(token.slice('Bearer '.length));
-				await pb.collection('users').authRefresh();
-			}
 		} catch (error) {
 			toast.error('Fehler beim Senden der Nachricht');
 			console.error('Error sending message:', error);
+		} finally {
+			generating = false;
 		}
 	};
 
