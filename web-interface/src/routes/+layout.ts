@@ -11,15 +11,14 @@ export const load: LayoutLoad = async ({ url, fetch }) => {
 
 	// For non-public routes, try to refresh auth first before any redirects
 	if (!isPublicRoute) {
-		try {
-			await pb.collection('users').authRefresh({ fetch: fetch });
-		} catch {
-			pb.authStore.clear();
-			redirect(307, '/login');
-		}
-
-		// After refresh attempt, check if auth is valid
-		if (!pb.authStore.isValid || !currentUser.store.record) {
+		if (pb.authStore.isValid) {
+			try {
+				await pb.collection('users').authRefresh({ fetch: fetch });
+			} catch {
+				pb.authStore.clear();
+				redirect(307, '/login');
+			}
+		} else {
 			pb.authStore.clear();
 			redirect(307, '/login');
 		}
