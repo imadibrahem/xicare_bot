@@ -5,27 +5,28 @@ import type { LayoutLoad } from './$types';
 
 export const ssr = false;
 
-export const load: LayoutLoad = async ({ url }) => {
-	const publicRoutes = ['/login', '/about'];
+export const load: LayoutLoad = async ({ url, fetch }) => {
+	const publicRoutes = ['/login'];
 	const isPublicRoute = publicRoutes.some((route) => url.pathname.startsWith(route));
 
-	// Redirect to root if user is logged in but on login page
-	if (currentUser.record && url.pathname.startsWith('/login')) {
-		redirect(307, '/');
-	}
-
-	// Redirect to login if user is not logged in and trying to access protected route
-	if (!currentUser.record && !isPublicRoute) {
+	// For non-public routes, try to refresh auth first before any redirects
+	if (!isPublicRoute) {
 		try {
-			// Do an auth refresh on every page reload
-			await pb.collection('users').authRefresh();
-			// If refresh worked, currentUser should be updated
-			if (!pb.authStore.isValid) {
-				redirect(307, '/login');
-			}
+			await pb.collection('users').authRefresh({ fetch: fetch });
 		} catch {
 			pb.authStore.clear();
 			redirect(307, '/login');
 		}
+
+		// After refresh attempt, check if auth is valid
+		if (!pb.authStore.isValid || !currentUser.store.record) {
+			pb.authStore.clear();
+			redirect(307, '/login');
+		}
+	}
+
+	// Redirect logged-in users away from login page
+	if (currentUser.store.record && url.pathname.startsWith('/login')) {
+		redirect(307, '/');
 	}
 };

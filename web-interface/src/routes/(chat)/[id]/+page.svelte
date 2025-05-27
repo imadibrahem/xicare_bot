@@ -37,7 +37,7 @@
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					Authorization: `Bearer ${currentUser.token}`
+					Authorization: `Bearer ${currentUser.store.token}`
 				},
 				body: JSON.stringify({ conversationId: page.params.id, message: messageText })
 			});

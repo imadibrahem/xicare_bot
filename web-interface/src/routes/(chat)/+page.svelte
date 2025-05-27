@@ -41,7 +41,7 @@
 
 			// Create the conversation and navigate to it
 			const conversation = await pb.collection('conversations').create<Conversation>({
-				user: currentUser.record?.id,
+				user: currentUser.store.record?.id,
 				configuration: configuration.id
 			});
 			// Set the global message state to transfer the first message to the new conversation
