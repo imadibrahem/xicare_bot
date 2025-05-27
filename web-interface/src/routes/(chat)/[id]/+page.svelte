@@ -48,7 +48,7 @@
 			const token = response.headers.get('Authorization');
 			if (token) {
 				pb.authStore.save(token.slice('Bearer '.length));
-				pb.collection('users').authRefresh();
+				await pb.collection('users').authRefresh();
 			}
 		} catch (error) {
 			toast.error('Fehler beim Senden der Nachricht');
