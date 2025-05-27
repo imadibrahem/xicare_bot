@@ -134,7 +134,10 @@ async def generate(data: GenerateRequest, request: Request):
         # Get the chat history
         response = await client.get(
             f"{os.environ.get('GENERATION_PB_URL')}/api/collections/messages/records",
-            params={"sort": "created"},  # Changed from json to params
+            params={
+                "sort": "created",
+                "filter": f"(conversation='{data.conversationId}')",
+            },  # Changed from json to params
             headers=auth_header,
         )
         messages = response.json()["items"]
