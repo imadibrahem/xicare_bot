@@ -1,4 +1,4 @@
 fastapi[standard]==0.115.9
-google-genai==1.14.0
+google-genai==1.16.1
 httpx==0.28.1
 python-dotenv==1.1.0
