@@ -183,7 +183,7 @@ class VertexAIRAG:
                         vertex_rag_store=types.VertexRagStore(
                             rag_resources=[
                                 types.VertexRagStoreRagResource(
-                                    rag_corpus="projects/convis/locations/europe-west4/ragCorpora/2305843009213693952"
+                                    rag_corpus=rag_corpus
                                 )
                             ],
                             similarity_top_k=rag_similarity_top_k,
