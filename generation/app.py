@@ -80,12 +80,12 @@ def gen_config(
         ),
         "rag_similarity_top_k": (
             config_response["rag_similarity_top_k"]
-            if config_response["top_p"] >= 0
+            if config_response["rag_similarity_top_k"] >= 0
             else None
         ),
         "rag_vector_distance_threshold": (
             config_response["rag_vector_distance_threshold"]
-            if config_response["top_p"] >= 0
+            if config_response["rag_vector_distance_threshold"] >= 0
             else None
         ),
         "block_hate_speech": config_response["block_hate_speech"],
