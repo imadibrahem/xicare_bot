@@ -63,7 +63,7 @@
 				<div class="max-w-2xl text-center [&_p:not(:first-child)]:mt-4">
 					<p class="[&:not(:first-child)]:mt-6">
 						<strong>
-							SUSI – Ihr digitaler Assistent beim Einheitlichen Ansprechpartner Berlin.
+							DIWI – Ihr digitaler Assistent beim Einheitlichen Ansprechpartner Berlin.
 						</strong>
 						<br />
 						Ich unterstütze Sie dabei, schnell und unkompliziert den passenden Online-Dienst für Ihr
