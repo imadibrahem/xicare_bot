@@ -9,7 +9,21 @@
 		reverse_proxy pocketbase:8080
 	}
 
-	# generation
+	# API
+	handle /v1/generation/* {
+		reverse_proxy generation:8000 {
+			transport http {
+				read_timeout 60s
+				response_header_timeout 60s
+			}
+    	}
+	}
+
+	handle /v1/telemetry {
+    	reverse_proxy generation:8000
+  	}
+
+	# GUI generation
 	handle /generation/* {
 		reverse_proxy generation:8000
 	}

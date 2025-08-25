@@ -1,11 +1,19 @@
-import os
-from fastapi import FastAPI, Request, HTTPException
+import os, json, uuid, datetime
+from typing import Optional, List, Dict, Any, Literal
+from fastapi import FastAPI, APIRouter, Request, HTTPException, Depends, Response
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 import httpx
-from pydantic import BaseModel
 import uvicorn
 from dotenv import load_dotenv
+
+import redis.asyncio as redis
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi import _rate_limit_exceeded_handler
 
 from generators.vertexai import VertexAIRAG
 
@@ -23,28 +31,14 @@ generator = VertexAIRAG(
 # Initializing FastAPI
 app = FastAPI()
 
-# Add CORS if environment variable is set
-if os.environ.get("PUBLIC_INTERFACE_URL"):
-    origins = [
-        os.environ.get("PUBLIC_INTERFACE_URL"),
-    ]
-
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
 
 # Model for incoming POST data
-class GenerateRequest(BaseModel):
+class GenerateRequestGUI(BaseModel):
     conversationId: str
     message: str
 
 
-def extract_token(request: Request) -> str:
+def extract_token(request: Request) -> Optional[str]:
     auth_header = request.headers.get("Authorization")
     if auth_header and auth_header.startswith("Bearer "):
         return auth_header[len("Bearer ") :]
@@ -63,8 +57,8 @@ async def verify_token(token: str):
 
 
 def gen_config(
-    config_response: dict[str, str | int | float],
-) -> dict[str, str | int | float]:
+    config_response: dict[str, Any],
+) -> dict[str, Any]:
     return {
         "model_name": config_response["model_name"],
         "system_prompt": config_response["system_prompt"].replace("\r", ""),
@@ -96,9 +90,11 @@ def gen_config(
         "block_harassment_content": config_response["block_harassment_content"],
     }
 
+GUI = APIRouter(prefix="/generation")
 
-@app.post("/generation/generate")
-async def generate(data: GenerateRequest, request: Request):
+# before /generation/generate but now already routed GUI to / generation
+@GUI.post("/generate")
+async def generate(data: GenerateRequestGUI, request: Request):
     # Extract token from request header
     token = extract_token(request)
     if not token:
@@ -159,6 +155,219 @@ async def generate(data: GenerateRequest, request: Request):
 
     # Return generated message with new token
     return JSONResponse(content={"status": "ok"})
+
+#######################################################
+# -------- API router --------
+API = APIRouter(prefix="/v1")
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
+TTL_MIN = int(os.getenv("CONTEXT_TTL_MINUTES", "60"))
+CONFIG_CACHE_SECONDS = int(os.getenv("CONFIG_CACHE_SECONDS", "300"))
+ORIGIN_WHITELIST = {o.strip() for o in os.getenv("ORIGIN_WHITELIST", "").split(",") if o.strip()}
+
+GENERATION_PB_URL = os.environ.get("GENERATION_PB_URL")
+PB_API_USER_EMAIL = os.environ.get("PB_API_USER_EMAIL")
+PB_API_USER_PASSWORD = os.environ.get("PB_API_USER_PASSWORD")
+                                   
+r = redis.from_url(REDIS_URL, decode_responses=True)
+limiter = Limiter(key_func=get_remote_address, storage_uri=REDIS_URL)
+
+# --- PocketBase admin token management ---
+_api_user_token: Optional[str] = None
+
+async def pb_api_user_token() -> str:
+    global _api_user_token
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        if _api_user_token:
+            resp = await client.post(
+                f"{GENERATION_PB_URL}/api/collections/users/auth-refresh",
+                headers={"Authorization": f"Bearer {_api_user_token}"}
+            )
+            if resp.status_code == 200:
+                _api_user_token = resp.json()["token"]
+                return _api_user_token
+        # (re)login when no token or refresh failed
+        resp = await client.post(
+            f"{GENERATION_PB_URL}/api/collections/users/auth-with-password",
+            json={"identity": PB_API_USER_EMAIL, "password": PB_API_USER_PASSWORD}
+        )
+        resp.raise_for_status()
+        _api_user_token = resp.json()["token"]
+        return _api_user_token
+    
+# --- config loader (always from PocketBase; short-ttl cache in Redis) ---
+async def latest_configuration() -> Dict[str, Any]:
+    cached = await r.get("configuration:latest")
+    if cached:
+        return json.loads(cached)
+
+    token = await pb_api_user_token()
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        resp = await client.get(
+            f"{GENERATION_PB_URL}/api/collections/configurations/records",
+            params={"perPage": 1, "filter": "default = true", "sort": "-updated"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        resp.raise_for_status()
+        items = resp.json().get("items", [])
+
+        if not items:
+            # fallback to latest
+            resp2 = await client.get(
+                f"{GENERATION_PB_URL}/api/collections/configurations/records",
+                params={"perPage": 1, "sort": "-updated"},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            resp2.raise_for_status()
+            items = resp2.json().get("items", [])
+
+        if not items:
+            raise HTTPException(status_code=500, detail="No configuration found")
+
+        item = items[0]
+        cfg = {
+            "model_name": item["model_name"],
+            "system_prompt": item["system_prompt"].replace("\r", ""),
+            "temperature": item.get("temperature"),
+            "top_p": item.get("top_p"),
+            "top_k": item.get("top_k"),
+            "max_output_tokens": item.get("max_output_tokens"),
+            "datastore": item.get("datastore") or None,
+            "rag_corpus": item.get("rag_corpus") or None,
+            "rag_similarity_top_k": item.get("rag_similarity_top_k"),
+            "rag_vector_distance_threshold": item.get("rag_vector_distance_threshold"),
+            "block_hate_speech": item.get("block_hate_speech", False),
+            "block_dangerous_content": item.get("block_dangerous_content", False),
+            "block_sexually_explicit_content": item.get("block_sexually_explicit_content", False),
+            "block_harassment_content": item.get("block_harassment_content", False),
+        }
+
+    await r.set("configuration:latest", json.dumps(cfg), ex=CONFIG_CACHE_SECONDS)
+    return cfg
+
+def require_allowed_origin(request: Request):
+    origin = request.headers.get("Origin")
+    if not ORIGIN_WHITELIST or origin not in ORIGIN_WHITELIST:
+        raise HTTPException(status_code=403, detail="Forbidden origin")
+    return origin
+
+class GenerateRequestAPI(BaseModel):
+    conversationId: Optional[str] = None
+    message: str
+
+class TelemetryRating(BaseModel):
+    conversationId: str
+    type: Literal["rating_submitted"]
+    rating: Literal["up", "down"]
+    timestamp: datetime.datetime
+
+class TelemetryLink(BaseModel):
+    conversationId: str
+    type: Literal["link_clicked"]
+    url: str
+    label: str
+    timestamp: datetime.datetime
+
+TelemetryEvent = TelemetryRating | TelemetryLink
+
+async def load_history(conv_id: str) -> List[Dict[str, str]]:
+    raw = await r.get(f"conversationId:{conv_id}")
+    return json.loads(raw) if raw else []
+
+async def save_history(conv_id: str, history: List[Dict[str, str]]):
+    await r.set(f"conversationId:{conv_id}", json.dumps(history), ex=TTL_MIN * 60)
+
+async def conv_exists(conv_id: str) -> bool:
+    return bool(await r.exists(f"conversationId:{conv_id}"))
+
+def expiry_iso() -> str:
+    return (datetime.datetime.now(datetime.UTC) + datetime.timedelta(minutes=TTL_MIN)).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+@API.post("/generation/imperia")
+@limiter.limit("10/10 second;100/minute;1000/day")
+async def generate_imperia(data: GenerateRequestAPI, request: Request, origin: str = Depends(require_allowed_origin)):
+    conversationId_supplied = data.conversationId
+    no_context = False
+
+    if conversationId_supplied:
+        history = await load_history(conversationId_supplied)
+        if not history:
+            no_context = True
+            conv_id = str(uuid.uuid4())
+            history = []
+        else:
+            conv_id = conversationId_supplied
+            # history is already loaded
+    else:
+        no_context = True
+        conv_id = str(uuid.uuid4())
+        history = []
+
+    history.append({"role": "user", "text": data.message})
+    configuration = await latest_configuration()
+    response_text = await generator.generate_content_async(history, **configuration)
+    history.append({"role": "model", "text": response_text})
+    await save_history(conv_id, history)
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "conversationId": conv_id,
+            "response": response_text,
+            "chatMessages": len(history),
+            "noContext": no_context,
+            "expiresAt": expiry_iso(),
+        },
+    )
+
+async def store_telemetry_in_pocketbase(events: List[TelemetryEvent], request: Request, origin: str):
+    token = await pb_api_user_token()
+    # ua = request.headers.get("User-Agent", "")
+    ip = request.headers.get("X-Forwarded-For", "").split(",")[0].strip() or \
+     (request.client.host if request.client else "")
+
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        # PocketBase has no bulk create, so fire requests; parallelize if needed
+        tasks = []
+        for ev in events:
+            payload = {
+                "conversationId": getattr(ev, "conversationId", None),
+                "type": ev.type,
+                "rating": getattr(ev, "rating", None),
+                "url": getattr(ev, "url", None),
+                "label": getattr(ev, "label", None),
+                "timestamp": ev.timestamp.isoformat(),
+                "origin": origin,
+                "ip": ip,
+                # "userAgent": ua,
+                "meta": None,
+            }
+            res = await client.post(
+                f"{GENERATION_PB_URL}/api/collections/telemetry/records",
+                json=payload, headers={"Authorization": f"Bearer {token}"}
+            )
+            if res.status_code >= 400:
+                raise HTTPException(status_code=502, detail=f"Telemetry store failed: {res.text}")
+            
+@API.post("/telemetry", status_code=204)
+@limiter.limit("10/10 second;100/minute;1000/day")
+async def telemetry(events: List[TelemetryEvent], request: Request, origin: str = Depends(require_allowed_origin)):
+    for ev in events:
+        if not await conv_exists(ev.conversationId):
+            raise HTTPException(status_code=404, detail="conversation unknown or expired")
+
+    await store_telemetry_in_pocketbase(events, request, origin)
+    
+    Response(status_code=204)
+
+# mount routers
+app.include_router(GUI)
+app.include_router(API)
+
+# rate-limit middleware on the whole app (only API routes have decorators)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 
 if __name__ == "__main__":
