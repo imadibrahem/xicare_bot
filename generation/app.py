@@ -173,27 +173,29 @@ r = redis.from_url(REDIS_URL, decode_responses=True)
 limiter = Limiter(key_func=get_remote_address, storage_uri=REDIS_URL)
 
 # --- PocketBase admin token management ---
-_api_user_token: Optional[str] = None
+_api_superuser_token: Optional[str] = None
 
-async def pb_api_user_token() -> str:
-    global _api_user_token
+async def pb_api_superuser_token() -> str:
+    # could also cache in the future
+    # but then again needs check if token from cache is ok etc. -> no real benefit
+    global _api_superuser_token
     async with httpx.AsyncClient(timeout=5.0) as client:
-        if _api_user_token:
+        if _api_superuser_token:
             resp = await client.post(
-                f"{GENERATION_PB_URL}/api/collections/users/auth-refresh",
-                headers={"Authorization": f"Bearer {_api_user_token}"}
+                f"{GENERATION_PB_URL}/api/collections/_superusers/auth-refresh",
+                headers={"Authorization": f"Bearer {_api_superuser_token}"}
             )
             if resp.status_code == 200:
-                _api_user_token = resp.json()["token"]
-                return _api_user_token
+                _api_superuser_token = resp.json()["token"]
+                return _api_superuser_token
         # (re)login when no token or refresh failed
         resp = await client.post(
-            f"{GENERATION_PB_URL}/api/collections/users/auth-with-password",
+            f"{GENERATION_PB_URL}/api/collections/_superusers/auth-with-password",
             json={"identity": PB_API_USER_EMAIL, "password": PB_API_USER_PASSWORD}
         )
         resp.raise_for_status()
-        _api_user_token = resp.json()["token"]
-        return _api_user_token
+        _api_superuser_token = resp.json()["token"]
+        return _api_superuser_token
     
 # --- config loader (always from PocketBase; short-ttl cache in Redis) ---
 async def latest_configuration() -> Dict[str, Any]:
@@ -201,7 +203,7 @@ async def latest_configuration() -> Dict[str, Any]:
     if cached:
         return json.loads(cached)
 
-    token = await pb_api_user_token()
+    token = await pb_api_superuser_token()
     async with httpx.AsyncClient(timeout=5.0) as client:
         resp = await client.get(
             f"{GENERATION_PB_URL}/api/collections/configurations/records",
@@ -321,7 +323,7 @@ async def generate_imperia(data: GenerateRequestAPI, request: Request, origin: s
     )
 
 async def store_telemetry_in_pocketbase(events: List[TelemetryEvent], request: Request, origin: str):
-    token = await pb_api_user_token()
+    token = await pb_api_superuser_token()
     # ua = request.headers.get("User-Agent", "")
     ip = request.headers.get("X-Forwarded-For", "").split(",")[0].strip() or \
      (request.client.host if request.client else "")
