@@ -142,11 +142,11 @@ async def generate(data: GenerateRequestGUI, request: Request):
         )
         messages = response.json()["items"]
 
-    #print("configuration UI", json.dumps(configuration, indent=2))
-    #print("messages UI", messages)
+    # print("configuration UI", json.dumps(configuration, indent=2))
+    # print("messages UI", messages)
     # Generate AI response
     response_text = await generator.generate_content_async(messages, **configuration)
-    #print("response_text", response_text)
+    # print("response_text", response_text)
     async with httpx.AsyncClient() as client:
         # Save AI's response to PocketBase
         await client.post(
@@ -296,12 +296,12 @@ async def generate_imperia(data: GenerateRequestAPI, request: Request, origin: s
     history.append({"role": "user", "text": data.message})
     configuration = await latest_configuration()
 
-    print("configuration API", json.dumps(configuration, indent=2))
-    #print("history API", history)
+    # print("configuration API", json.dumps(configuration, indent=2))
+    # print("history API", history)
 
     response_text = await generator.generate_content_async(history, **configuration)
     
-    #print("response_text", response_text)
+    # print("response_text", response_text)
     
     history.append({"role": "model", "text": response_text})
     await save_history(conv_id, history)
@@ -320,8 +320,8 @@ async def generate_imperia(data: GenerateRequestAPI, request: Request, origin: s
 async def store_telemetry_in_pocketbase(events: List[TelemetryEvent], request: Request, origin: str):
     token = await pb_api_superuser_token()
     # ua = request.headers.get("User-Agent", "")
-    ip = request.headers.get("X-Forwarded-For", "").split(",")[0].strip() or \
-     (request.client.host if request.client else "")
+    # ip = request.headers.get("X-Forwarded-For", "").split(",")[0].strip() or \
+    # (request.client.host if request.client else "")
 
     async with httpx.AsyncClient(timeout=5.0) as client:
         # PocketBase has no bulk create, so fire requests; parallelize if needed
@@ -335,7 +335,7 @@ async def store_telemetry_in_pocketbase(events: List[TelemetryEvent], request: R
                 "label": getattr(ev, "label", None),
                 "timestamp": ev.timestamp.isoformat(),
                 "origin": origin,
-                "ip": ip,
+                # "ip": ip,
                 # "userAgent": ua,
                 "meta": None,
             }
