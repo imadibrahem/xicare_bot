@@ -17,7 +17,6 @@ from slowapi import _rate_limit_exceeded_handler
 
 from generators.vertexai import VertexAIRAG
 
-
 # Load environment variables from .env file
 config = load_dotenv()
 
@@ -31,6 +30,10 @@ generator = VertexAIRAG(
 # Initializing FastAPI
 app = FastAPI()
 
+# Redis with Rate-Limiter
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
+r = redis.from_url(REDIS_URL, decode_responses=True)
+limiter = Limiter(key_func=get_remote_address, storage_uri=REDIS_URL)
 
 # Model for incoming POST data
 class GenerateRequestGUI(BaseModel):
@@ -94,6 +97,7 @@ GUI = APIRouter(prefix="/generation")
 
 # before /generation/generate but now already routed GUI to / generation
 @GUI.post("/generate")
+@limiter.limit("10/10 second;100/minute;1000/day")
 async def generate(data: GenerateRequestGUI, request: Request):
     # Extract token from request header
     token = extract_token(request)
@@ -138,9 +142,11 @@ async def generate(data: GenerateRequestGUI, request: Request):
         )
         messages = response.json()["items"]
 
+    #print("configuration UI", json.dumps(configuration, indent=2))
+    #print("messages UI", messages)
     # Generate AI response
     response_text = await generator.generate_content_async(messages, **configuration)
-
+    #print("response_text", response_text)
     async with httpx.AsyncClient() as client:
         # Save AI's response to PocketBase
         await client.post(
@@ -160,7 +166,6 @@ async def generate(data: GenerateRequestGUI, request: Request):
 # -------- API router --------
 API = APIRouter(prefix="/v1")
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 TTL_MIN = int(os.getenv("CONTEXT_TTL_MINUTES", "60"))
 CONFIG_CACHE_SECONDS = int(os.getenv("CONFIG_CACHE_SECONDS", "300"))
 ORIGIN_WHITELIST = {o.strip() for o in os.getenv("ORIGIN_WHITELIST", "").split(",") if o.strip()}
@@ -169,9 +174,6 @@ GENERATION_PB_URL = os.environ.get("GENERATION_PB_URL")
 PB_API_USER_EMAIL = os.environ.get("PB_API_USER_EMAIL")
 PB_API_USER_PASSWORD = os.environ.get("PB_API_USER_PASSWORD")
                                    
-r = redis.from_url(REDIS_URL, decode_responses=True)
-limiter = Limiter(key_func=get_remote_address, storage_uri=REDIS_URL)
-
 # --- PocketBase admin token management ---
 _api_superuser_token: Optional[str] = None
 
@@ -227,22 +229,8 @@ async def latest_configuration() -> Dict[str, Any]:
             raise HTTPException(status_code=500, detail="No configuration found")
 
         item = items[0]
-        cfg = {
-            "model_name": item["model_name"],
-            "system_prompt": item["system_prompt"].replace("\r", ""),
-            "temperature": item.get("temperature"),
-            "top_p": item.get("top_p"),
-            "top_k": item.get("top_k"),
-            "max_output_tokens": item.get("max_output_tokens"),
-            "datastore": item.get("datastore") or None,
-            "rag_corpus": item.get("rag_corpus") or None,
-            "rag_similarity_top_k": item.get("rag_similarity_top_k"),
-            "rag_vector_distance_threshold": item.get("rag_vector_distance_threshold"),
-            "block_hate_speech": item.get("block_hate_speech", False),
-            "block_dangerous_content": item.get("block_dangerous_content", False),
-            "block_sexually_explicit_content": item.get("block_sexually_explicit_content", False),
-            "block_harassment_content": item.get("block_harassment_content", False),
-        }
+
+        cfg = gen_config(item)
 
     await r.set("configuration:latest", json.dumps(cfg), ex=CONFIG_CACHE_SECONDS)
     return cfg
@@ -286,7 +274,7 @@ def expiry_iso() -> str:
     return (datetime.datetime.now(datetime.UTC) + datetime.timedelta(minutes=TTL_MIN)).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 @API.post("/generation/imperia")
-@limiter.limit("10/10 second;100/minute;1000/day")
+@limiter.limit("20/10 second;100/minute;1000/day")
 async def generate_imperia(data: GenerateRequestAPI, request: Request, origin: str = Depends(require_allowed_origin)):
     conversationId_supplied = data.conversationId
     no_context = False
@@ -307,7 +295,14 @@ async def generate_imperia(data: GenerateRequestAPI, request: Request, origin: s
 
     history.append({"role": "user", "text": data.message})
     configuration = await latest_configuration()
+
+    print("configuration API", json.dumps(configuration, indent=2))
+    #print("history API", history)
+
     response_text = await generator.generate_content_async(history, **configuration)
+    
+    #print("response_text", response_text)
+    
     history.append({"role": "model", "text": response_text})
     await save_history(conv_id, history)
 
@@ -352,7 +347,7 @@ async def store_telemetry_in_pocketbase(events: List[TelemetryEvent], request: R
                 raise HTTPException(status_code=502, detail=f"Telemetry store failed: {res.text}")
             
 @API.post("/telemetry", status_code=204)
-@limiter.limit("10/10 second;100/minute;1000/day")
+@limiter.limit("20/10 second;100/minute;1000/day")
 async def telemetry(events: List[TelemetryEvent], request: Request, origin: str = Depends(require_allowed_origin)):
     for ev in events:
         if not await conv_exists(ev.conversationId):
@@ -366,7 +361,7 @@ async def telemetry(events: List[TelemetryEvent], request: Request, origin: str 
 app.include_router(GUI)
 app.include_router(API)
 
-# rate-limit middleware on the whole app (only API routes have decorators)
+# rate-limit middleware on the whole app
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
