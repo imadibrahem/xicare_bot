@@ -9,19 +9,35 @@
 		reverse_proxy pocketbase:8080
 	}
 
-	# API
-	handle /v1/generation/* {
-		reverse_proxy generation:8000 {
-			transport http {
-				read_timeout 60s
-				response_header_timeout 60s
-			}
-    	}
-	}
+	# API: restrict by IP
+        @gen_api {
+                path /v1/generation/*
+                remote_ip {$IP_WHITELIST}
+        }
+        handle @gen_api {
+                reverse_proxy generation:8000 {
+                        transport http {
+                                read_timeout 60s
+                                response_header_timeout 60s
+                        }
+                }
+        }
+        handle /v1/generation/* {
+                respond "Forbidden" 403
+        }
 
-	handle /v1/telemetry {
-    	reverse_proxy generation:8000
-  	}
+        @telemetry_api {
+                path /v1/telemetry
+                remote_ip {$IP_WHITELIST}
+        }
+        handle @telemetry_api {
+                reverse_proxy generation:8000
+        }
+        handle /v1/telemetry {
+                respond "Forbidden" 403
+        }
+
+
 
 	# GUI generation
 	handle /generation/* {
