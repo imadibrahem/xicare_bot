@@ -15,6 +15,8 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi import _rate_limit_exceeded_handler
 
+import time
+
 from generators.vertexai import VertexAIRAG
 
 # Load environment variables from .env file
@@ -241,6 +243,44 @@ def require_allowed_origin(request: Request):
         raise HTTPException(status_code=403, detail="Forbidden origin")
     return origin
 
+async def store_api_event(
+    conversationId: str,
+    conversationId_supplied: str,
+    endpoint: str,
+    status_code: int,
+    duration_ms: int,
+    origin: str,
+    chatMessages: int,
+    noContext: bool,
+    expiresAt: str,
+    error_message: Optional[str] = None
+):
+    """Store metadata about every API call (without messages)."""
+    token = await pb_api_superuser_token()
+    payload = {
+        "conversationId": conversationId,
+        "conversationId_supplied": conversationId_supplied,
+        "endpoint": endpoint,
+        "status_code": status_code,
+        "error_message": error_message,
+        "duration_ms": duration_ms,
+        "origin": origin,
+        "chatMessages": chatMessages,
+        "noContext": noContext,
+        "expiresAt": expiresAt,
+        "timestamp": datetime.datetime.now(datetime.UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+
+    }
+
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        res = await client.post(
+            f"{GENERATION_PB_URL}/api/collections/api_events/records",
+            json=payload,
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        if res.status_code >= 400:
+            print("Failed to store API event:", res.text)
+
 class GenerateRequestAPI(BaseModel):
     conversationId: Optional[str] = None
     message: str
@@ -276,46 +316,94 @@ def expiry_iso() -> str:
 @API.post("/generation/imperia")
 @limiter.limit("20/10 second;100/minute;1000/day")
 async def generate_imperia(data: GenerateRequestAPI, request: Request, origin: str = Depends(require_allowed_origin)):
+    start_time = time.perf_counter()
     conversationId_supplied = data.conversationId
     no_context = False
+    conv_id = None
+    history = []
 
-    if conversationId_supplied:
-        history = await load_history(conversationId_supplied)
-        if not history:
+    try:
+        if conversationId_supplied:
+            history = await load_history(conversationId_supplied)
+            if not history:
+                no_context = True
+                conv_id = str(uuid.uuid4())
+                history = []
+            else:
+                conv_id = conversationId_supplied
+                # history is already loaded
+        else:
             no_context = True
             conv_id = str(uuid.uuid4())
             history = []
-        else:
-            conv_id = conversationId_supplied
-            # history is already loaded
-    else:
-        no_context = True
-        conv_id = str(uuid.uuid4())
-        history = []
 
-    history.append({"role": "user", "text": data.message})
-    configuration = await latest_configuration()
+        history.append({"role": "user", "text": data.message})
+        configuration = await latest_configuration()
 
-    # print("configuration API", json.dumps(configuration, indent=2))
-    # print("history API", history)
+        # print("configuration API", json.dumps(configuration, indent=2))
+        # print("history API", history)
 
-    response_text = await generator.generate_content_async(history, **configuration)
+        response_text = await generator.generate_content_async(history, **configuration)
+        
+        # print("response_text", response_text)
+        
+        history.append({"role": "model", "text": response_text})
+        await save_history(conv_id, history)
+        
+        duration_ms = int((time.perf_counter() - start_time) * 1000)
+        await store_api_event(
+                conversationId=conv_id,
+                conversationId_supplied=conversationId_supplied,
+                endpoint="/v1/generation/imperia",
+                status_code=200,
+                duration_ms=duration_ms,
+                origin=origin,
+                chatMessages=len(history),
+                noContext=no_context,
+                expiresAt=expiry_iso(),
+        )
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "conversationId": conv_id,
+                "response": response_text,
+                "chatMessages": len(history),
+                "noContext": no_context,
+                "expiresAt": expiry_iso(),
+            },
+        )
     
-    # print("response_text", response_text)
-    
-    history.append({"role": "model", "text": response_text})
-    await save_history(conv_id, history)
-
-    return JSONResponse(
-        status_code=200,
-        content={
-            "conversationId": conv_id,
-            "response": response_text,
-            "chatMessages": len(history),
-            "noContext": no_context,
-            "expiresAt": expiry_iso(),
-        },
-    )
+    except HTTPException as e:
+        duration_ms = int((time.perf_counter() - start_time) * 1000)
+        await store_api_event(
+            conversationId=conv_id,
+            conversationId_supplied=conversationId_supplied,
+            endpoint="/v1/generation/imperia",
+            status_code=e.status_code,
+            error_message=str(e.detail),
+            duration_ms=duration_ms,
+            origin=origin,
+            chatMessages=len(history),
+            noContext=no_context,
+            expiresAt=expiry_iso(),
+        )
+        raise
+    except Exception as e:
+        duration_ms = int((time.perf_counter() - start_time) * 1000)
+        await store_api_event(
+            conversationId=conv_id,
+            conversationId_supplied=conversationId_supplied,
+            endpoint="/v1/generation/imperia",
+            status_code=500,
+            error_message=str(e),
+            duration_ms=duration_ms,
+            origin=origin,
+            chatMessages=len(history),
+            noContext=no_context,
+            expiresAt=expiry_iso(),
+        )
+        raise
 
 async def store_telemetry_in_pocketbase(events: List[TelemetryEvent], request: Request, origin: str):
     token = await pb_api_superuser_token()
@@ -325,7 +413,6 @@ async def store_telemetry_in_pocketbase(events: List[TelemetryEvent], request: R
 
     async with httpx.AsyncClient(timeout=5.0) as client:
         # PocketBase has no bulk create, so fire requests; parallelize if needed
-        tasks = []
         for ev in events:
             payload = {
                 "conversationId": getattr(ev, "conversationId", None),
@@ -349,13 +436,53 @@ async def store_telemetry_in_pocketbase(events: List[TelemetryEvent], request: R
 @API.post("/telemetry", status_code=204)
 @limiter.limit("20/10 second;100/minute;1000/day")
 async def telemetry(events: List[TelemetryEvent], request: Request, origin: str = Depends(require_allowed_origin)):
-    for ev in events:
-        if not await conv_exists(ev.conversationId):
-            raise HTTPException(status_code=404, detail="conversation unknown or expired")
+    start_time = time.perf_counter()
+    conversationIds = [ev.conversationId for ev in events]
+    try:
+        for ev in events:
+            if not await conv_exists(ev.conversationId):
+                raise HTTPException(status_code=404, detail="conversation unknown or expired")
 
-    await store_telemetry_in_pocketbase(events, request, origin)
+        await store_telemetry_in_pocketbase(events, request, origin)
+        
+        
+        duration_ms = int((time.perf_counter() - start_time) * 1000)
+        
+        await store_api_event(
+                conversationId=None,
+                conversationId_supplied=",".join(conversationIds),
+                endpoint="/v1/telemetry",
+                status_code=204,
+                duration_ms=duration_ms,
+                origin=origin,
+        )
+        
+        return Response(status_code=204)
     
-    Response(status_code=204)
+    except HTTPException as e:
+        duration_ms = int((time.perf_counter() - start_time) * 1000)
+        await store_api_event(
+            conversationId=None,
+            conversationId_supplied=",".join(conversationIds),
+            endpoint="/v1/telemetry",
+            status_code=e.status_code,
+            error_message=str(e.detail),
+            duration_ms=duration_ms,
+            origin=origin
+        )
+        raise
+    except Exception as e:
+        duration_ms = int((time.perf_counter() - start_time) * 1000)
+        await store_api_event(
+            conversationId=None,
+            conversationId_supplied=",".join(conversationIds),
+            endpoint="/v1/telemetry",
+            status_code=500,
+            error_message=str(e),
+            duration_ms=duration_ms,
+            origin=origin
+        )
+        raise
 
 # mount routers
 app.include_router(GUI)
