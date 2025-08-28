@@ -3,6 +3,8 @@ from typing import Optional, List, Dict, Any, Literal
 from fastapi import FastAPI, APIRouter, Request, HTTPException, Depends, Response
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from pydantic import BaseModel, Field
 import httpx
 import uvicorn
@@ -250,9 +252,9 @@ async def store_api_event(
     status_code: int,
     duration_ms: int,
     origin: str,
-    chatMessages: int,
-    noContext: bool,
-    expiresAt: str,
+    chatMessages: Optional[int] = None,
+    noContext: Optional[bool] = None,
+    expiresAt: Optional[str] = None,
     error_message: Optional[str] = None
 ):
     """Store metadata about every API call (without messages)."""
@@ -322,58 +324,59 @@ async def generate_imperia(data: GenerateRequestAPI, request: Request, origin: s
     conv_id = None
     history = []
 
-    try:
-        if conversationId_supplied:
-            history = await load_history(conversationId_supplied)
-            if not history:
-                no_context = True
-                conv_id = str(uuid.uuid4())
-                history = []
-            else:
-                conv_id = conversationId_supplied
-                # history is already loaded
-        else:
+    #try:
+    if conversationId_supplied:
+        history = await load_history(conversationId_supplied)
+        if not history:
             no_context = True
             conv_id = str(uuid.uuid4())
             history = []
+        else:
+            conv_id = conversationId_supplied
+            # history is already loaded
+    else:
+        no_context = True
+        conv_id = str(uuid.uuid4())
+        history = []
 
-        history.append({"role": "user", "text": data.message})
-        configuration = await latest_configuration()
+    history.append({"role": "user", "text": data.message})
+    configuration = await latest_configuration()
 
-        # print("configuration API", json.dumps(configuration, indent=2))
-        # print("history API", history)
+    # print("configuration API", json.dumps(configuration, indent=2))
+    # print("history API", history)
 
-        response_text = await generator.generate_content_async(history, **configuration)
-        
-        # print("response_text", response_text)
-        
-        history.append({"role": "model", "text": response_text})
-        await save_history(conv_id, history)
-        
-        duration_ms = int((time.perf_counter() - start_time) * 1000)
-        await store_api_event(
-                conversationId=conv_id,
-                conversationId_supplied=conversationId_supplied,
-                endpoint="/v1/generation/imperia",
-                status_code=200,
-                duration_ms=duration_ms,
-                origin=origin,
-                chatMessages=len(history),
-                noContext=no_context,
-                expiresAt=expiry_iso(),
-        )
-
-        return JSONResponse(
-            status_code=200,
-            content={
-                "conversationId": conv_id,
-                "response": response_text,
-                "chatMessages": len(history),
-                "noContext": no_context,
-                "expiresAt": expiry_iso(),
-            },
-        )
+    response_text = await generator.generate_content_async(history, **configuration)
     
+    # print("response_text", response_text)
+    
+    history.append({"role": "model", "text": response_text})
+    await save_history(conv_id, history)
+    
+    duration_ms = int((time.perf_counter() - start_time) * 1000)
+    await store_api_event(
+            conversationId=conv_id,
+            conversationId_supplied=conversationId_supplied,
+            endpoint="/v1/generation/imperia",
+            status_code=200,
+            duration_ms=duration_ms,
+            origin=origin,
+            chatMessages=len(history),
+            noContext=no_context,
+            expiresAt=expiry_iso(),
+    )
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "conversationId": conv_id,
+            "response": response_text,
+            "chatMessages": len(history),
+            "noContext": no_context,
+            "expiresAt": expiry_iso(),
+        },
+    )
+    """
+    # for 500 would be more detail but not needed -> global_handler
     except HTTPException as e:
         duration_ms = int((time.perf_counter() - start_time) * 1000)
         await store_api_event(
@@ -404,6 +407,7 @@ async def generate_imperia(data: GenerateRequestAPI, request: Request, origin: s
             expiresAt=expiry_iso(),
         )
         raise
+    """
 
 async def store_telemetry_in_pocketbase(events: List[TelemetryEvent], request: Request, origin: str):
     token = await pb_api_superuser_token()
@@ -438,27 +442,28 @@ async def store_telemetry_in_pocketbase(events: List[TelemetryEvent], request: R
 async def telemetry(events: List[TelemetryEvent], request: Request, origin: str = Depends(require_allowed_origin)):
     start_time = time.perf_counter()
     conversationIds = [ev.conversationId for ev in events]
-    try:
-        for ev in events:
-            if not await conv_exists(ev.conversationId):
-                raise HTTPException(status_code=404, detail="conversation unknown or expired")
+    #try:
+    for ev in events:
+        if not await conv_exists(ev.conversationId):
+            raise HTTPException(status_code=404, detail="conversation unknown or expired")
 
-        await store_telemetry_in_pocketbase(events, request, origin)
-        
-        
-        duration_ms = int((time.perf_counter() - start_time) * 1000)
-        
-        await store_api_event(
-                conversationId=None,
-                conversationId_supplied=",".join(conversationIds),
-                endpoint="/v1/telemetry",
-                status_code=204,
-                duration_ms=duration_ms,
-                origin=origin,
-        )
-        
-        return Response(status_code=204)
+    await store_telemetry_in_pocketbase(events, request, origin)
     
+    duration_ms = int((time.perf_counter() - start_time) * 1000)
+    
+    await store_api_event(
+            conversationId=None,
+            conversationId_supplied=",".join(conversationIds),
+            endpoint="/v1/telemetry",
+            status_code=204,
+            duration_ms=duration_ms,
+            origin=origin,
+    )
+    
+    return Response(status_code=204)
+    
+    """
+    # global handler
     except HTTPException as e:
         duration_ms = int((time.perf_counter() - start_time) * 1000)
         await store_api_event(
@@ -483,6 +488,7 @@ async def telemetry(events: List[TelemetryEvent], request: Request, origin: str 
             origin=origin
         )
         raise
+    """
 
 # mount routers
 app.include_router(GUI)
@@ -490,9 +496,104 @@ app.include_router(API)
 
 # rate-limit middleware on the whole app
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+async def extract_conversation_ids(request: Request) -> Optional[str]:
+    """Try to extract conversationId(s) from request body (both single + telemetry list)."""
+    try:
+        body = await request.json()
+        if isinstance(body, dict) and "conversationId" in body:
+            return body["conversationId"]
+        elif isinstance(body, list) and body and "conversationId" in body[0]:
+            return ",".join(
+                str(ev.get("conversationId")) for ev in body if "conversationId" in ev
+            )
+    except Exception:
+        pass
+    return None
+
+
+async def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    # Default error message from SlowAPI
+    error_message = str(exc.detail) if hasattr(exc, "detail") else str(exc)
+
+    conversationId_supplied = await extract_conversation_ids(request)
+
+    # Store in PocketBase
+    await store_api_event(
+        conversationId=None,
+        conversationId_supplied=conversationId_supplied,
+        endpoint=str(request.url.path),
+        status_code=429,
+        error_message=error_message,
+        duration_ms=0,
+        origin=request.headers.get("Origin", "")
+    )
+
+    # Return normal SlowAPI response
+    return _rate_limit_exceeded_handler(request, exc)
+
+# override default
+app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
+
+
 app.add_middleware(SlowAPIMiddleware)
 
+
+# Errors before logic
+# If the error comes from outside FastAPI e.g. 403 Caddy Forbidden this is not stored.
+
+# 401, 403, 404, 405, 429 (limiter also within FastAPI decorator)
+# will trigger for any raise HTTPException inside FastAPI routes/ dependencies
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    conversationId_supplied = await extract_conversation_ids(request)
+
+    await store_api_event(
+        conversationId=None,
+        conversationId_supplied=conversationId_supplied,
+        endpoint=str(request.url.path),
+        status_code=exc.status_code,
+        error_message=str(exc.detail),
+        duration_ms=0,
+        origin=request.headers.get("Origin", "")
+    )
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
+# 422 Unprocessable Entity FastAPI’s automatic validation errors
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    conversationId_supplied = await extract_conversation_ids(request)
+
+    await store_api_event(
+        conversationId=None,
+        conversationId_supplied=conversationId_supplied,
+        endpoint=str(request.url.path),
+        status_code=422,
+        error_message=str(exc.errors()),
+        duration_ms=0,
+        origin=request.headers.get("Origin", "")
+    )
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
+
+# 500
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    conversationId_supplied = await extract_conversation_ids(request)
+
+    await store_api_event(
+        conversationId=None,
+        conversationId_supplied=conversationId_supplied,
+        endpoint=request.url.path,
+        status_code=500,
+        error_message=str(exc),
+        duration_ms=0,
+        origin=request.headers.get("Origin", "")
+    )
+
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal Server Error", "error": str(exc)},
+    )
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
