@@ -25,10 +25,20 @@
 		}
 	}
 
+        # ----------------------------
+        # API: restrict by Germany IPs
+        # ----------------------------
+        (germany_ips) {
+                remote_ip {
+                import de.zone
+                import de6.zone
+                }
+        }
+
 	# API: restrict by IP
         @gen_api {
                 path /v1/generation/*
-                remote_ip {$IP_WHITELIST}
+                import germany_ips
         }
         handle @gen_api {
                 reverse_proxy generation:8000 {
@@ -44,7 +54,7 @@
 
         @telemetry_api {
                 path /v1/telemetry
-                remote_ip {$IP_WHITELIST}
+                import germany_ips
         }
 	handle @telemetry_api {
 		reverse_proxy generation:8000 {
