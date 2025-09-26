@@ -1,12 +1,28 @@
 {$SITE_ADDRESS} {
 	encode
-	# pocketbase
-	handle /_/* {
-		reverse_proxy pocketbase:8080
+        
+        # Global request size limit
+	request_body {
+		max_size 1MB
 	}
 
-	handle /api/* {
-		reverse_proxy pocketbase:8080
+        # pocketbase
+	handle /_/* {
+		reverse_proxy pocketbase:8080 {
+			transport http {
+				read_timeout 5s
+				response_header_timeout 5s
+			}
+		}
+	}
+
+        handle /api/* {
+		reverse_proxy pocketbase:8080 {
+			transport http {
+				read_timeout 5s
+				response_header_timeout 5s
+			}
+		}
 	}
 
 	# API: restrict by IP
@@ -17,8 +33,8 @@
         handle @gen_api {
                 reverse_proxy generation:8000 {
                         transport http {
-                                read_timeout 60s
-                                response_header_timeout 60s
+                                read_timeout 50s
+                                response_header_timeout 50s
                         }
                 }
         }
@@ -30,9 +46,14 @@
                 path /v1/telemetry
                 remote_ip {$IP_WHITELIST}
         }
-        handle @telemetry_api {
-                reverse_proxy generation:8000
-        }
+	handle @telemetry_api {
+		reverse_proxy generation:8000 {
+			transport http {
+				read_timeout 5s
+				response_header_timeout 5s
+			}
+		}
+	}
         handle /v1/telemetry {
                 respond "Forbidden" 403
         }
@@ -41,7 +62,12 @@
 
 	# GUI generation
 	handle /generation/* {
-		reverse_proxy generation:8000
+		reverse_proxy generation:8000 {
+			transport http {
+				read_timeout 50s
+				response_header_timeout 50s
+			}
+		}
 	}
 
 	handle {

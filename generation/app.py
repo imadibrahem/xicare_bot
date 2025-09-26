@@ -34,10 +34,34 @@ generator = VertexAIRAG(
 # Initializing FastAPI
 app = FastAPI()
 
+ORIGIN_WHITELIST = {o.strip() for o in os.getenv("ORIGIN_WHITELIST", "").split(",") if o.strip()}
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=list(ORIGIN_WHITELIST),  # exact origins only
+    allow_methods=["POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
+    max_age=600,
+)
+
 # Redis with Rate-Limiter
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 r = redis.from_url(REDIS_URL, decode_responses=True)
-limiter = Limiter(key_func=get_remote_address, storage_uri=REDIS_URL)
+# Per-IP limiter (default)
+def client_ip(request: Request) -> str:
+    xff = request.headers.get("x-forwarded-for")
+    return (xff.split(",")[0].strip() if xff else request.client.host) or "unknown"
+limiter = Limiter(key_func=client_ip, storage_uri=REDIS_URL)
+# Global limiter (same key for everyone)
+def global_key_func(request):
+    return "global"  # every request shares this bucket
+global_limiter = Limiter(key_func=global_key_func, storage_uri=REDIS_URL)
+
+def require_allowed_origin(request: Request):
+    origin = request.headers.get("Origin")
+    if not ORIGIN_WHITELIST or origin not in ORIGIN_WHITELIST:
+        raise HTTPException(status_code=403, detail="Forbidden origin")
+    return origin
 
 # Model for incoming POST data
 class GenerateRequestGUI(BaseModel):
@@ -101,19 +125,24 @@ GUI = APIRouter(prefix="/generation")
 
 # before /generation/generate but now already routed GUI to / generation
 @GUI.post("/generate")
-@limiter.limit("10/10 second;100/minute;1000/day")
-async def generate(data: GenerateRequestGUI, request: Request):
+@limiter.limit("2/10 second;10/minute;100/day") # per-IP limits
+@global_limiter.limit("10/10 second;50/minute;2000/day") # global caps
+async def generate(data: GenerateRequestGUI, request: Request, origin: str = Depends(require_allowed_origin)):
     # Extract token from request header
     token = extract_token(request)
     if not token:
         raise HTTPException(status_code=401, detail="Missing token")
 
+    v = await verify_token(token)
+    if not v:
+        raise HTTPException(status_code=401, detail="Invalid token")
+                        
     # Use token directly without refreshing
     auth_header = {"Authorization": f"Bearer {token}"}
 
     async with httpx.AsyncClient() as client:
         # Save user's message to PocketBase
-        await client.post(
+        response = await client.post(
             f"{os.environ.get('GENERATION_PB_URL')}/api/collections/messages/records",
             json={
                 "conversation": data.conversationId,
@@ -123,6 +152,7 @@ async def generate(data: GenerateRequestGUI, request: Request):
             },
             headers=auth_header,
         )
+        response.raise_for_status()
 
         # Get the chat configuration
         response = await client.get(
@@ -133,6 +163,7 @@ async def generate(data: GenerateRequestGUI, request: Request):
             },
             headers=auth_header,
         )
+        response.raise_for_status()
         configuration = gen_config(response.json()["expand"]["configuration"])
 
         # Get the chat history
@@ -144,6 +175,7 @@ async def generate(data: GenerateRequestGUI, request: Request):
             },  # Changed from json to params
             headers=auth_header,
         )
+        response.raise_for_status()
         messages = response.json()["items"]
 
     # print("configuration UI", json.dumps(configuration, indent=2))
@@ -172,7 +204,6 @@ API = APIRouter(prefix="/v1")
 
 TTL_MIN = int(os.getenv("CONTEXT_TTL_MINUTES", "60"))
 CONFIG_CACHE_SECONDS = int(os.getenv("CONFIG_CACHE_SECONDS", "300"))
-ORIGIN_WHITELIST = {o.strip() for o in os.getenv("ORIGIN_WHITELIST", "").split(",") if o.strip()}
 
 GENERATION_PB_URL = os.environ.get("GENERATION_PB_URL")
 PB_API_USER_EMAIL = os.environ.get("PB_API_USER_EMAIL")
@@ -238,12 +269,6 @@ async def latest_configuration() -> Dict[str, Any]:
 
     await r.set("configuration:latest", json.dumps(cfg), ex=CONFIG_CACHE_SECONDS)
     return cfg
-
-def require_allowed_origin(request: Request):
-    origin = request.headers.get("Origin")
-    if not ORIGIN_WHITELIST or origin not in ORIGIN_WHITELIST:
-        raise HTTPException(status_code=403, detail="Forbidden origin")
-    return origin
 
 async def store_api_event(
     conversationId: str,
@@ -316,7 +341,8 @@ def expiry_iso() -> str:
     return (datetime.datetime.now(datetime.UTC) + datetime.timedelta(minutes=TTL_MIN)).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 @API.post("/generation/imperia")
-@limiter.limit("20/10 second;100/minute;1000/day")
+@limiter.limit("2/10 second;10/minute;100/day") # per-IP limits
+@global_limiter.limit("10/10 second;50/minute;2000/day") # global caps
 async def generate_imperia(data: GenerateRequestAPI, request: Request, origin: str = Depends(require_allowed_origin)):
     start_time = time.perf_counter()
     conversationId_supplied = data.conversationId
@@ -438,7 +464,8 @@ async def store_telemetry_in_pocketbase(events: List[TelemetryEvent], request: R
                 raise HTTPException(status_code=502, detail=f"Telemetry store failed: {res.text}")
             
 @API.post("/telemetry", status_code=204)
-@limiter.limit("20/10 second;100/minute;1000/day")
+@limiter.limit("5/10 second;10/minute;100/day") # per-IP limits
+@global_limiter.limit("20/10 second;100/minute;2000/day") # global caps
 async def telemetry(events: List[TelemetryEvent], request: Request, origin: str = Depends(require_allowed_origin)):
     start_time = time.perf_counter()
     conversationIds = [ev.conversationId for ev in events]
@@ -517,6 +544,8 @@ async def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
     error_message = str(exc.detail) if hasattr(exc, "detail") else str(exc)
 
     conversationId_supplied = await extract_conversation_ids(request)
+    
+    print(f"429 [RateLimitExceeded] {error_message}")
 
     # Store in PocketBase
     await store_api_event(
@@ -548,6 +577,8 @@ app.add_middleware(SlowAPIMiddleware)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     conversationId_supplied = await extract_conversation_ids(request)
 
+    print(f"[HTTPException] {exc.status_code} {exc.detail}")
+    
     await store_api_event(
         conversationId=None,
         conversationId_supplied=conversationId_supplied,
@@ -558,12 +589,15 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         origin=request.headers.get("Origin", "")
     )
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+    # return JSONResponse(status_code=exc.status_code)
 
 # 422 Unprocessable Entity FastAPI’s automatic validation errors
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     conversationId_supplied = await extract_conversation_ids(request)
-
+    
+    print(f"422 [ValidationError] {exc.errors()}")
+    
     await store_api_event(
         conversationId=None,
         conversationId_supplied=conversationId_supplied,
@@ -574,12 +608,15 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         origin=request.headers.get("Origin", "")
     )
     return JSONResponse(status_code=422, content={"detail": exc.errors()})
+    # return JSONResponse(status_code=422)
 
 # 500
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     conversationId_supplied = await extract_conversation_ids(request)
 
+    print(f"500 [Exception] {repr(exc)}")
+    
     await store_api_event(
         conversationId=None,
         conversationId_supplied=conversationId_supplied,
@@ -589,10 +626,11 @@ async def global_exception_handler(request: Request, exc: Exception):
         duration_ms=0,
         origin=request.headers.get("Origin", "")
     )
-
+    print({"detail": "Internal Server Error", "error": str(exc)})
+    
     return JSONResponse(
         status_code=500,
-        content={"detail": "Internal Server Error", "error": str(exc)},
+        content={"detail": "Internal Server Error"},
     )
 
 if __name__ == "__main__":

@@ -180,3 +180,5 @@ token-*.json
 pocketbase/pocketbase
 pb_data
 pb_migrations
+
+export*
