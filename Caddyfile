@@ -28,17 +28,9 @@
         # ----------------------------
         # API: restrict by Germany IPs
         # ----------------------------
-        (germany_ips) {
-                remote_ip {
-                import de.zone
-                import de6.zone
-                }
-        }
-
-	# API: restrict by IP
-        @gen_api {
+	@gen_api {
                 path /v1/generation/*
-                import germany_ips
+		import /etc/caddy/germany_ips.caddy                
         }
         handle @gen_api {
                 reverse_proxy generation:8000 {
@@ -54,7 +46,7 @@
 
         @telemetry_api {
                 path /v1/telemetry
-                import germany_ips
+		import /etc/caddy/germany_ips.caddy
         }
 	handle @telemetry_api {
 		reverse_proxy generation:8000 {
