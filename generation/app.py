@@ -52,10 +52,6 @@ def client_ip(request: Request) -> str:
     xff = request.headers.get("x-forwarded-for")
     return (xff.split(",")[0].strip() if xff else request.client.host) or "unknown"
 limiter = Limiter(key_func=client_ip, storage_uri=REDIS_URL)
-# Global limiter (same key for everyone)
-def global_key_func(request):
-    return "global"  # every request shares this bucket
-global_limiter = Limiter(key_func=global_key_func, storage_uri=REDIS_URL)
 
 def require_allowed_origin(request: Request):
     origin = request.headers.get("Origin")
@@ -77,7 +73,7 @@ def extract_token(request: Request) -> Optional[str]:
 
 
 async def verify_token(token: str):
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=2.0) as client:
         response = await client.post(
             f"{os.environ.get('GENERATION_PB_URL')}/api/collections/users/auth-refresh",
             headers={"Authorization": f"Bearer {token}"},
@@ -126,7 +122,7 @@ GUI = APIRouter(prefix="/generation")
 # before /generation/generate but now already routed GUI to / generation
 @GUI.post("/generate")
 @limiter.limit("2/10 second;10/minute;100/day") # per-IP limits
-@global_limiter.limit("10/10 second;50/minute;2000/day") # global caps
+@limiter.shared_limit("10/10 second;50/minute;2000/day", scope="global_generation") # global caps
 async def generate(data: GenerateRequestGUI, request: Request, origin: str = Depends(require_allowed_origin)):
     # Extract token from request header
     token = extract_token(request)
@@ -140,7 +136,7 @@ async def generate(data: GenerateRequestGUI, request: Request, origin: str = Dep
     # Use token directly without refreshing
     auth_header = {"Authorization": f"Bearer {token}"}
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=5.0) as client:
         # Save user's message to PocketBase
         response = await client.post(
             f"{os.environ.get('GENERATION_PB_URL')}/api/collections/messages/records",
@@ -183,7 +179,7 @@ async def generate(data: GenerateRequestGUI, request: Request, origin: str = Dep
     # Generate AI response
     response_text = await generator.generate_content_async(messages, **configuration)
     # print("response_text", response_text)
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=2.0) as client:
         # Save AI's response to PocketBase
         await client.post(
             f"{os.environ.get('GENERATION_PB_URL')}/api/collections/messages/records",
@@ -342,7 +338,7 @@ def expiry_iso() -> str:
 
 @API.post("/generation/imperia")
 @limiter.limit("2/10 second;10/minute;100/day") # per-IP limits
-@global_limiter.limit("10/10 second;50/minute;2000/day") # global caps
+@limiter.shared_limit("10/10 second;50/minute;2000/day", scope="global_generation") # global caps
 async def generate_imperia(data: GenerateRequestAPI, request: Request, origin: str = Depends(require_allowed_origin)):
     start_time = time.perf_counter()
     conversationId_supplied = data.conversationId
@@ -465,7 +461,7 @@ async def store_telemetry_in_pocketbase(events: List[TelemetryEvent], request: R
             
 @API.post("/telemetry", status_code=204)
 @limiter.limit("5/10 second;10/minute;100/day") # per-IP limits
-@global_limiter.limit("20/10 second;100/minute;2000/day") # global caps
+@limiter.shared_limit("20/10 second;100/minute;2000/day", scope="global_generation") # global caps
 async def telemetry(events: List[TelemetryEvent], request: Request, origin: str = Depends(require_allowed_origin)):
     start_time = time.perf_counter()
     conversationIds = [ev.conversationId for ev in events]
