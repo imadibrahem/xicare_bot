@@ -1,12 +1,12 @@
 {$SITE_ADDRESS} {
 	encode
-        
-        # Global request size limit
+
+	# Global request size limit
 	request_body {
 		max_size 1MB
 	}
 
-        # pocketbase
+	# pocketbase
 	handle /_/* {
 		reverse_proxy pocketbase:8080 {
 			transport http {
@@ -16,7 +16,7 @@
 		}
 	}
 
-        handle /api/* {
+	handle /api/* {
 		reverse_proxy pocketbase:8080 {
 			transport http {
 				read_timeout 5s
@@ -25,29 +25,29 @@
 		}
 	}
 
-        # ----------------------------
-        # API: restrict by Germany IPs
-        # ----------------------------
+	# ----------------------------
+	# API: restrict by Germany IPs
+	# ----------------------------
 	@gen_api {
-                path /v1/generation/*
-		import /etc/caddy/germany_ips.caddy                
-        }
-        handle @gen_api {
-                reverse_proxy generation:8000 {
-                        transport http {
-                                read_timeout 50s
-                                response_header_timeout 50s
-                        }
-                }
-        }
-        handle /v1/generation/* {
-                respond "Forbidden" 403
-        }
-
-        @telemetry_api {
-                path /v1/telemetry
+		path /v1/generation/*
 		import /etc/caddy/germany_ips.caddy
-        }
+	}
+	handle @gen_api {
+		reverse_proxy generation:8000 {
+			transport http {
+				read_timeout 50s
+				response_header_timeout 50s
+			}
+		}
+	}
+	handle /v1/generation/* {
+		respond "Forbidden" 403
+	}
+
+	@telemetry_api {
+		path /v1/telemetry
+		import /etc/caddy/germany_ips.caddy
+	}
 	handle @telemetry_api {
 		reverse_proxy generation:8000 {
 			transport http {
@@ -56,11 +56,9 @@
 			}
 		}
 	}
-        handle /v1/telemetry {
-                respond "Forbidden" 403
-        }
-
-
+	handle /v1/telemetry {
+		respond "Forbidden" 403
+	}
 
 	# GUI generation
 	handle /generation/* {
