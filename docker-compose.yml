@@ -40,8 +40,6 @@ services:
       - caddy_data:/data
       - caddy_config:/config
       - ./germany_ips.caddy:/etc/caddy/germany_ips.caddy
-      - ./de.zone:/etc/caddy/de.zone
-      - ./de6.zone:/etc/caddy/de6.zone
 
 volumes:
   caddy_data:
