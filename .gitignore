@@ -182,3 +182,7 @@ pb_data
 pb_migrations
 
 export*
+
+*zip
+*csv
+*log
