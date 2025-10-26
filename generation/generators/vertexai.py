@@ -1,4 +1,4 @@
-from typing import Awaitable
+from typing import Awaitable, AsyncIterator  
 from google import genai
 from google.genai import types
 from google.genai.types import HttpOptions, HarmBlockThreshold
@@ -138,6 +138,60 @@ class VertexAIRAG:
             ),
         )
         return response.text
+    
+    async def astream_content(
+        self,
+        history: list[dict[str, str]],
+        system_prompt: str,
+        user_role="user",
+        model_name="gemini-2.0-flash-001",
+        temperature=1.0,
+        top_p=1.0,
+        top_k: int | None = None,
+        max_output_tokens=8192,
+        datastore: str | None = None,
+        rag_corpus: str | None = None,
+        rag_similarity_top_k: int | None = 20,
+        rag_vector_distance_threshold: float | None = 0.5,
+        block_hate_speech=0,
+        block_dangerous_content=0,
+        block_sexually_explicit_content=0,
+        block_harassment_content=0,
+        seed: int | None = None,
+    ) -> AsyncIterator[str]:
+        
+        cfg = self._make_config(
+            system_prompt,
+            temperature,
+            top_p,
+            top_k,
+            max_output_tokens,
+            seed,
+            datastore,
+            rag_corpus,
+            rag_similarity_top_k,
+            rag_vector_distance_threshold,
+            block_hate_speech,
+            block_dangerous_content,
+            block_sexually_explicit_content,
+            block_harassment_content,
+        )
+
+        # iterate Google stream and yield text deltas
+        # await?
+        print("contents", self._create_contents(history, user_role)) ###
+        print("cfg", cfg)
+        async for chunk in await self._client.aio.models.generate_content_stream(
+            model=model_name,
+            contents=self._create_contents(history, user_role),
+            config=cfg,
+        ):
+            print(chunk.text) #####
+            # chunk.text may be None; guard & only yield real deltas
+            t = getattr(chunk, "text", "") or ""
+            if t:
+                yield t # “pause here, send this piece out, I’ll resume where I left off and send the next piece later”
+                
 
     def _create_contents(
         self, history: list[dict[str, str]], user_role="user"

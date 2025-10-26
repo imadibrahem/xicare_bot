@@ -1,7 +1,7 @@
 import os, json, uuid, datetime
 from typing import Optional, List, Dict, Any, Literal
 from fastapi import FastAPI, APIRouter, Request, HTTPException, Depends, Response
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 import httpx
 import uvicorn
 from dotenv import load_dotenv
+import asyncio
 
 import redis.asyncio as redis
 from slowapi import Limiter
@@ -434,7 +435,96 @@ async def generate_imperia(data: GenerateRequestAPI, request: Request, origin: s
         )
         raise
     """
+    
+@API.post("/generation/imperia/stream")
+@limiter.limit("2/10 second;5/minute;50/day") # per-IP limits
+@limiter.shared_limit("10/10 second;50/minute;2000/day", scope="v1/generation/imperia/stream", key_func=global_bucket) # global endpoint
+@limiter.shared_limit("50/10 second;300/minute;4000/day", scope="global:all", key_func=global_bucket) # global caps
+async def generate_imperia_stream(
+    data: GenerateRequestAPI,
+    request: Request,
+    origin: str = Depends(require_allowed_origin),
+):
+    start_time = time.perf_counter()
+    conversationId_supplied = data.conversationId
+    no_context = False
+    conv_id = None
+    history = []
 
+    # build conv + history exactly like your non-streaming route
+    if conversationId_supplied:
+        history = await load_history(conversationId_supplied)
+        if not history:
+            no_context = True
+            conv_id = str(uuid.uuid4())
+            history = []
+        else:
+            conv_id = conversationId_supplied
+    else:
+        no_context = True
+        conv_id = str(uuid.uuid4())
+        history = []
+
+    history.append({"role": "user", "text": data.message})
+    configuration = await latest_configuration()
+
+    async def ndjson_generator():
+        buffer = []
+        try:
+            # stream from Vertex and forward deltas as NDJSON lines
+            async for delta in generator.astream_content(history, **configuration):
+                buffer.append(delta)
+                yield (json.dumps({"type": "delta", "delta": delta}) + "\n").encode("utf-8")
+                await asyncio.sleep(0)  # let the loop flush
+
+            full_text = "".join(buffer)
+
+            # persist like your normal endpoint
+            history.append({"role": "model", "text": full_text})
+            await save_history(conv_id, history)
+
+            duration_ms = int((time.perf_counter() - start_time) * 1000)
+            await store_api_event(
+                conversationId=conv_id,
+                conversationId_supplied=conversationId_supplied,
+                endpoint="/v1/generation/imperia/stream",
+                status_code=200,
+                duration_ms=duration_ms,
+                origin=origin,
+                chatMessages=len(history),
+                noContext=no_context,
+                expiresAt=expiry_iso(),
+            )
+
+            # send a final object that mirrors the non-streaming response
+            final_obj = {
+                "conversationId": conv_id,
+                "response": full_text,
+                "chatMessages": len(history),
+                "noContext": no_context,
+                "expiresAt": expiry_iso(),
+            }
+            yield (json.dumps({"type": "final", "data": final_obj}) + "\n").encode("utf-8")
+
+        except Exception as e:
+            # surface as an error line; also log telemetry like your handlers do
+            err_line = json.dumps({"type": "error", "error": str(e)}) + "\n"
+            yield err_line.encode("utf-8")
+            raise
+
+    return StreamingResponse(
+        ndjson_generator(),
+        # media_type="text/plain",
+        media_type="application/x-ndjson",  # newline-delimited JSON
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",  # helpful if you’re behind nginx
+            "Connection": "keep-alive",
+        },
+    )
+    
+######################################################
+    
 async def store_telemetry_in_pocketbase(events: List[TelemetryEvent], request: Request, origin: str):
     token = await pb_api_superuser_token()
     # ua = request.headers.get("User-Agent", "")
