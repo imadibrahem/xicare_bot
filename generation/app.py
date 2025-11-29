@@ -36,6 +36,15 @@ generator = VertexAIRAG(
 app = FastAPI()
 
 ORIGIN_WHITELIST = {o.strip() for o in os.getenv("ORIGIN_WHITELIST", "").split(",") if o.strip()}
+LIMIT_PER_IP_PER_10_SECS = os.environ.get("LIMIT_PER_IP_PER_10_S")
+LIMIT_PER_IP_PER_1_MIN = os.environ.get("LIMIT_PER_IP_PER_1_MIN")
+LIMIT_PER_IP_PER_1_DAY = os.environ.get("LIMIT_PER_IP_PER_1_DAY")
+LIMIT_PER_ENDPOINT_PER_10_SECS = os.environ.get("LIMIT_PER_ENDPOINT_PER_10_S")
+LIMIT_PER_ENDPOINT_PER_1_MIN = os.environ.get("LIMIT_PER_ENDPOINT_PER_1_MIN")
+LIMIT_PER_ENDPOINT_PER_1_DAY = os.environ.get("LIMIT_PER_ENDPOINT_PER_1_DAY")
+LIMIT_PER_SERVER_PER_10_SECS = os.environ.get("LIMIT_PER_SERVER_PER_10_S")
+LIMIT_PER_SERVER_PER_1_MIN = os.environ.get("LIMIT_PER_SERVER_PER_1_MIN")
+LIMIT_PER_SERVER_PER_1_DAY = os.environ.get("LIMIT_PER_SERVER_PER_1_DAY")
 
 app.add_middleware(
     CORSMiddleware,
@@ -124,9 +133,9 @@ GUI = APIRouter(prefix="/generation")
 
 # before /generation/generate but now already routed GUI to / generation
 @GUI.post("/generate")
-@limiter.limit("2/10 second;5/minute;50/day") # per-IP limits
-@limiter.shared_limit("10/10 second;50/minute;2000/day", scope="generation/generate", key_func=global_bucket) # global endpoint
-@limiter.shared_limit("50/10 second;300/minute;4000/day", scope="global:all", key_func=global_bucket) # global caps
+@limiter.limit(f"{LIMIT_PER_IP_PER_10_SECS};{LIMIT_PER_IP_PER_1_MIN};{LIMIT_PER_IP_PER_1_DAY}") # per-IP limits
+@limiter.shared_limit(f"{LIMIT_PER_ENDPOINT_PER_10_SECS};{LIMIT_PER_ENDPOINT_PER_1_MIN};{LIMIT_PER_ENDPOINT_PER_1_DAY}", scope="generation/generate", key_func=global_bucket) # global endpoint
+@limiter.shared_limit(f"{LIMIT_PER_SERVER_PER_10_SECS};{LIMIT_PER_SERVER_PER_1_MIN};{LIMIT_PER_SERVER_PER_1_DAY}", scope="global:all", key_func=global_bucket) # global caps
 async def generate(data: GenerateRequestGUI, request: Request, origin: str = Depends(require_allowed_origin)):
     # Extract token from request header
     token = extract_token(request)
@@ -341,9 +350,9 @@ def expiry_iso() -> str:
     return (datetime.datetime.now(datetime.UTC) + datetime.timedelta(minutes=TTL_MIN)).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 @API.post("/generation/imperia")
-@limiter.limit("2/10 second;5/minute;50/day") # per-IP limits
-@limiter.shared_limit("10/10 second;50/minute;2000/day", scope="v1/generation/imperia", key_func=global_bucket) # global endpoint
-@limiter.shared_limit("50/10 second;300/minute;4000/day", scope="global:all", key_func=global_bucket) # global caps
+@limiter.limit(f"{LIMIT_PER_IP_PER_10_SECS};{LIMIT_PER_IP_PER_1_MIN};{LIMIT_PER_IP_PER_1_DAY}") # per-IP limits
+@limiter.shared_limit(f"{LIMIT_PER_ENDPOINT_PER_10_SECS};{LIMIT_PER_ENDPOINT_PER_1_MIN};{LIMIT_PER_ENDPOINT_PER_1_DAY}", scope="v1/generation/imperia", key_func=global_bucket) # global endpoint
+@limiter.shared_limit(f"{LIMIT_PER_SERVER_PER_10_SECS};{LIMIT_PER_SERVER_PER_1_MIN};{LIMIT_PER_SERVER_PER_1_DAY}", scope="global:all", key_func=global_bucket) # global caps
 async def generate_imperia(data: GenerateRequestAPI, request: Request, origin: str = Depends(require_allowed_origin)):
     start_time = time.perf_counter()
     conversationId_supplied = data.conversationId
@@ -437,9 +446,9 @@ async def generate_imperia(data: GenerateRequestAPI, request: Request, origin: s
     """
     
 @API.post("/generation/imperia/stream")
-@limiter.limit("2/10 second;5/minute;50/day") # per-IP limits
-@limiter.shared_limit("10/10 second;50/minute;2000/day", scope="v1/generation/imperia/stream", key_func=global_bucket) # global endpoint
-@limiter.shared_limit("50/10 second;300/minute;4000/day", scope="global:all", key_func=global_bucket) # global caps
+@limiter.limit(f"{LIMIT_PER_IP_PER_10_SECS};{LIMIT_PER_IP_PER_1_MIN};{LIMIT_PER_IP_PER_1_DAY}") # per-IP limits
+@limiter.shared_limit(f"{LIMIT_PER_ENDPOINT_PER_10_SECS};{LIMIT_PER_ENDPOINT_PER_1_MIN};{LIMIT_PER_ENDPOINT_PER_1_DAY}", scope="v1/generation/imperia/stream", key_func=global_bucket) # global endpoint
+@limiter.shared_limit(f"{LIMIT_PER_SERVER_PER_10_SECS};{LIMIT_PER_SERVER_PER_1_MIN};{LIMIT_PER_SERVER_PER_1_DAY}", scope="global:all", key_func=global_bucket) # global caps
 async def generate_imperia_stream(
     data: GenerateRequestAPI,
     request: Request,
@@ -554,9 +563,9 @@ async def store_telemetry_in_pocketbase(events: List[TelemetryEvent], request: R
                 raise HTTPException(status_code=502, detail=f"Telemetry store failed: {res.text}")
             
 @API.post("/telemetry", status_code=204)
-@limiter.limit("5/10 second;10/minute;100/day") # per-IP limits
-@limiter.shared_limit("20/10 second;100/minute;4000/day", scope="v1/telemetry", key_func=global_bucket) # global endpoint
-@limiter.shared_limit("50/10 second;300/minute;4000/day", scope="global:all", key_func=global_bucket) # global caps
+@limiter.limit(f"{LIMIT_PER_IP_PER_10_SECS};{LIMIT_PER_IP_PER_1_MIN};{LIMIT_PER_IP_PER_1_DAY}") # per-IP limits
+@limiter.shared_limit(f"{LIMIT_PER_ENDPOINT_PER_10_SECS};{LIMIT_PER_ENDPOINT_PER_1_MIN};{LIMIT_PER_ENDPOINT_PER_1_DAY}", scope="v1/telemetry", key_func=global_bucket) # global endpoint
+@limiter.shared_limit(f"{LIMIT_PER_SERVER_PER_10_SECS};{LIMIT_PER_SERVER_PER_1_MIN};{LIMIT_PER_SERVER_PER_1_DAY}", scope="global:all", key_func=global_bucket) # global caps
 async def telemetry(events: List[TelemetryEvent], request: Request, origin: str = Depends(require_allowed_origin)):
     start_time = time.perf_counter()
     conversationIds = [ev.conversationId for ev in events]

@@ -178,15 +178,14 @@ class VertexAIRAG:
         )
 
         # iterate Google stream and yield text deltas
-        # await?
-        print("contents", self._create_contents(history, user_role)) ###
-        print("cfg", cfg)
+        # print("contents", self._create_contents(history, user_role))
+        # print("cfg", cfg)
         async for chunk in await self._client.aio.models.generate_content_stream(
             model=model_name,
             contents=self._create_contents(history, user_role),
             config=cfg,
         ):
-            print(chunk.text) #####
+            # print(chunk.text)
             # chunk.text may be None; guard & only yield real deltas
             t = getattr(chunk, "text", "") or ""
             if t:
