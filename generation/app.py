@@ -36,15 +36,15 @@ generator = VertexAIRAG(
 app = FastAPI()
 
 ORIGIN_WHITELIST = {o.strip() for o in os.getenv("ORIGIN_WHITELIST", "").split(",") if o.strip()}
-LIMIT_PER_IP_PER_10_SECS = os.environ.get("LIMIT_PER_IP_PER_10_S")
-LIMIT_PER_IP_PER_1_MIN = os.environ.get("LIMIT_PER_IP_PER_1_MIN")
-LIMIT_PER_IP_PER_1_DAY = os.environ.get("LIMIT_PER_IP_PER_1_DAY")
-LIMIT_PER_ENDPOINT_PER_10_SECS = os.environ.get("LIMIT_PER_ENDPOINT_PER_10_S")
-LIMIT_PER_ENDPOINT_PER_1_MIN = os.environ.get("LIMIT_PER_ENDPOINT_PER_1_MIN")
-LIMIT_PER_ENDPOINT_PER_1_DAY = os.environ.get("LIMIT_PER_ENDPOINT_PER_1_DAY")
-LIMIT_PER_SERVER_PER_10_SECS = os.environ.get("LIMIT_PER_SERVER_PER_10_S")
-LIMIT_PER_SERVER_PER_1_MIN = os.environ.get("LIMIT_PER_SERVER_PER_1_MIN")
-LIMIT_PER_SERVER_PER_1_DAY = os.environ.get("LIMIT_PER_SERVER_PER_1_DAY")
+LIMIT_PER_IP_PER_10_SECS       = os.getenv("LIMIT_PER_IP_PER_10_SECS", "10/10 second")
+LIMIT_PER_IP_PER_1_MIN         = os.getenv("LIMIT_PER_IP_PER_1_MIN", "50/minute")
+LIMIT_PER_IP_PER_1_DAY         = os.getenv("LIMIT_PER_IP_PER_1_DAY", "400/day")
+LIMIT_PER_ENDPOINT_PER_10_SECS = os.getenv("LIMIT_PER_ENDPOINT_PER_10_SECS", "20/10 second")
+LIMIT_PER_ENDPOINT_PER_1_MIN   = os.getenv("LIMIT_PER_ENDPOINT_PER_1_MIN", "200/minute")
+LIMIT_PER_ENDPOINT_PER_1_DAY   = os.getenv("LIMIT_PER_ENDPOINT_PER_1_DAY", "2000/day")
+LIMIT_PER_SERVER_PER_10_SECS   = os.getenv("LIMIT_PER_SERVER_PER_10_SECS", "50/10 second")
+LIMIT_PER_SERVER_PER_1_MIN     = os.getenv("LIMIT_PER_SERVER_PER_1_MIN", "300/minute")
+LIMIT_PER_SERVER_PER_1_DAY     = os.getenv("LIMIT_PER_SERVER_PER_1_DAY", "4000/day")
 
 app.add_middleware(
     CORSMiddleware,
