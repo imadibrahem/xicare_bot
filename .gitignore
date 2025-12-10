@@ -180,3 +180,7 @@ token-*.json
 pocketbase/pocketbase
 pb_data
 pb_migrations
+
+# output excel files
+*.xlsx
+*.png
