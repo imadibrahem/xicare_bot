@@ -69,6 +69,8 @@
 						Ich unterstütze Sie dabei, schnell und unkompliziert den passenden Online-Dienst für Ihr
 						Anliegen in Berlin zu finden – ob als Privatperson, Unternehmen oder Organisation.
 						<br />
+						Obwohl wir keine Daten speichern, bitten wir Sie, keine sensiblen Daten einzugeben.
+						<br />
 						Schön, dass Sie da sind!
 					</p>
 				</div>
