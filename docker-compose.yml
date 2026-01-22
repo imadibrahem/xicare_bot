@@ -19,7 +19,7 @@ services:
     restart: unless-stopped
   generation:
     build: ./generation
-    command: ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "error", "--access-log", "false"]
+    command: ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "error", "--no-access-log"]
     env_file: .env
     restart: unless-stopped
     depends_on: 
