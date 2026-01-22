@@ -1,3 +1,11 @@
+{
+	# only errors no access logs
+	log {
+		level ERROR
+		output stderr
+	}
+}
+
 {$SITE_ADDRESS} {
 	encode
 
