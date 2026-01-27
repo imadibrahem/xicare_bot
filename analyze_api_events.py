@@ -490,7 +490,7 @@ def plot_traffic_heatmap(api_2d_without_errors: pd.DataFrame, outpath, generatio
     plt.savefig(outpath, dpi=150)
     plt.close(fig)
     
-def analyze_api_events(path_api, start, end, bucket, outdir="analysis_plots_api_only"):
+def analyze_api_events(path_api: str, start: pd.Timestamp, end: pd.Timestamp, bucket: str = "1d", outdir: Path = Path("analysis_plots_api_only")):
     print("Start analyze_api_events()")
     api_all, api_2d = load_api(path_api, start, end)
     print("len(api_2d)", len(api_2d))
