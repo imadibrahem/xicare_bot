@@ -129,13 +129,16 @@ def save_df(df: pd.DataFrame, output: str | None = None) -> str:
 # ----------------------------
 # ENTRY POINT
 # ----------------------------
-async def main(output: str | None = None):
+async def get_api_events(output: str | None = None):
+    print("Start get_api_events()")
     items = await fetch_all_api_events(per_page=100, sort="created")
     df = to_dataframe(items)
     out_path = save_df(df, output)
     print(f"Saved {len(df)} api_events to {out_path}")
+    print("End get_api_events()")
+    return out_path
 
 
 if __name__ == "__main__":
     # pass an explicit filename if wanted
-    asyncio.run(main())
+    out_path = asyncio.run(get_api_events())
