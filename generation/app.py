@@ -21,7 +21,7 @@ from slowapi import _rate_limit_exceeded_handler
 import time
 
 from generators.vertexai import VertexAIRAG
-
+from PIIFilter import PIIFilter
 # Load environment variables from .env file
 config = load_dotenv()
 
