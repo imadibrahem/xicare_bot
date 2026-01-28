@@ -158,8 +158,8 @@ async def generate(data: GenerateRequestGUI, request: Request, origin: str = Dep
             f"{os.environ.get('GENERATION_PB_URL')}/api/collections/messages/records",
             json={
                 "conversation": data.conversationId,
-                "text": data.message,
-                "clean_text": clean_text,
+                "text": clean_text,
+                "original_text": data.message,
                 "role": "user",
                 "rating": 0,
             },
