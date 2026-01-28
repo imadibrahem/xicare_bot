@@ -35,7 +35,7 @@ def send_api_events():
         to=json.loads(config["mail_to_statistics"]),
         cc=json.loads(config["mail_cc_statistics"]) if config.get("mail_cc_statistics") else None,
         subject=f"DIWI Statistik Update {start.strftime("%d-%m-%Y")} bis {end.strftime("%d-%m-%Y")}",
-        text_body=f"Im Anhang die Statistiken von DIWI für den Zeitraum {start.strftime("%d-%m-%Y")} bis {end.strftime("%d-%m-%Y")}. \n \n Beste Grüße und einen guten Start in die Woche wünschen CONVIS Consult & Marketing sowie sqlXpert!",
+        text_body=f"Im Anhang die Statistiken von DIWI für den Zeitraum {start.strftime("%d-%m-%Y")} bis {end.strftime("%d-%m-%Y")}. \n \nBeste Grüße und einen guten Start in die Woche wünschen CONVIS Consult & Marketing sowie sqlXpert!",
         attachments=[
                 {
                     "filename": f"DIWI_{start.strftime("%d-%m-%Y")}_{end.strftime("%d-%m-%Y")}.png",
@@ -67,7 +67,7 @@ def send_api_events():
         to=json.loads(config["mail_to_data"]),
         cc=json.loads(config["mail_cc_data"]) if config.get("mail_cc_data") else None,
         subject=f"DIWI Daten Update bis {end.strftime("%d-%m-%Y")}",
-        text_body=f"Im Anhang finden Sie die Daten von DIWI von Anfang bis {end.strftime("%d-%m-%Y")}. \n \n Beste Grüße und einen guten Start in die Woche wünschen CONVIS Consult & Marketing sowie sqlXpert!",
+        text_body=f"Im Anhang finden Sie die Daten von DIWI von Anfang bis {end.strftime("%d-%m-%Y")}. \n \nBeste Grüße und einen guten Start in die Woche wünschen CONVIS Consult & Marketing sowie sqlXpert!",
         attachments=[
                 {
                     "filename": f"{out_path}",
