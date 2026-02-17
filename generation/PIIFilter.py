@@ -7,7 +7,7 @@ import re
 import warnings
 import logging
 import unicodedata
-
+import math
 
 class PIIFilter:
     """
@@ -45,9 +45,9 @@ class PIIFilter:
         "INSURANCE_ID": 6,
         "HEALTH_INFO": 5,
 
-        "STUDENT_NUMBER": 5,
-        "EMPLOYEE_ID": 6,
-        "PRO_LICENSE": 6,
+        "STUDENT_NUMBER": 11,
+        "EMPLOYEE_ID": 11,
+        "PRO_LICENSE": 11,
 
         "IP_ADDRESS": 5,
         "DATE": 5,
@@ -422,11 +422,16 @@ class PIIFilter:
         )
         self.STRICT_ADDRESS_RX = re.compile(self.STRICT_ADDRESS_REGEX, re.I | re.UNICODE | re.VERBOSE)
         # Conservative fallback: street name + suffix + house number (captures variants missed by STRICT_ADDRESS)
-        self.FALLBACK_STREET_RX = re.compile(r"\b[A-ZÀ-ÖØ-ÝÄÖÜ][\wÀ-ÖØ-öø-ÿÄÖÜäöüß'’\.-]*(?:\s+(?:" + self.STREET_SUFFIX_COMPOUND + r"))\s*\d{1,4}[A-Za-z]?(?:\s*[-–]\s*\d+[A-Za-z]?)?\b", re.I | re.UNICODE)
+        # Accept either the compact suffix list or the broader street type list (cover English 'Street', 'Avenue', etc.)
+        self.FALLBACK_STREET_RX = re.compile(
+            r"\b[A-ZÀ-ÖØ-ÝÄÖÜ][\wÀ-ÖØ-öø-ÿÄÖÜäöüß'’\.-]*(?:\s+(?:" + self.STREET_SUFFIX_COMPOUND + r"|" + self.STREET_TYPES + r"))\s*\d{1,4}[A-Za-z]?(?:\s*[-–]\s*\d+[A-Za-z]?)?\b",
+            re.I | re.UNICODE
+        )
         # POSTAL codes + City
         self.CITY_TOKEN = r"[A-ZÀ-ÖØ-ÝÄÖÜ][A-Za-zÀ-ÖØ-öø-ÿĀ-ſ\u00C0-\u024F\u0370-\u03FF\u0400-\u04FFÄÖÜäöüß'’\.]+"
         self.CITY_OR_DISTRICT = rf"{self.CITY_TOKEN}(?:[-\s]{self.CITY_TOKEN})*"
 
+        
         self.POSTAL_EU_PATTERNS = [
             rf"\b(?:DE|D)?\s*[-–]?\s*(\d{{5}})\s+{self.CITY_OR_DISTRICT}{self.PAREN_DISTRICT}\b",
             rf"\b(?:AT|A)?\s*[-–]?\s*(\d{{4}})\s+{self.CITY_OR_DISTRICT}{self.PAREN_DISTRICT}\b",
@@ -488,7 +493,10 @@ class PIIFilter:
         # Date
         self.DATE_REGEX_1 = r"\b\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4}\b"
         self.DATE_REGEX_2 = r"\b\d{4}[.\-/]\d{1,2}[.\-/]\d{1,2}\b"
-        self.DATE_REGEX_3 = r"\b\d{1,2}\s+[A-Za-zÄÖÜäöüßÁÉÍÓÚáéíóúñç]+\s+\d{4}\b"
+        self.DATE_REGEX_3 = r"\b\d{1,2}\s+[A-Za-zÄÖÜäöüßÁÉÍÓÚáéíóúñç]+,?\s+\d{4}\b"  # Added ,? to handle commas
+        self.DATE_REGEX_4 = r"\b[A-Z][a-z]+\s+\d{1,2},?\s+\d{4}\b"  # US format: Month Day, Year
+        self.DATE_REGEX_5 = r"\b\d{1,2}\.\s+(?:Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember|Jan|Feb|Mär|Apr|Jun|Jul|Aug|Sep|Okt|Nov|Dez)\b\s+\d{4}\b"  # German format
+        self.SSN_REGEX = r"\b\d{3}-\d{2}-\d{4}\b"  # US Social Security Number format
 
         # Passports / IDs (generic)
         self.US_PASSPORT_REGEX = r"\b[A-Z][0-9]{8}\b"
@@ -522,6 +530,7 @@ class PIIFilter:
             (r"\b(\d{13})\b", "jmbg_like"),
             (r"\b(\d{11})\b", "gr_amka"),
             (r"\b(756(?:\.\d{4}\.\d{4}\.\d{2}|\d{10}))\b", "ch_ahv"),
+            (r"\b(\d{3}-\d{2}-\d{4})\b", "us_ssn"),
         ]
 
         # TAX split
@@ -784,7 +793,8 @@ class PIIFilter:
         self.CUSTOMER_NUMBER_RX = re.compile(
             r"(?:customer[\s\-]?(?:number|no|id|no\.)|cust(?:omer)?[\s\-]?(?:number|no|id|no\.)?|client[\s\-]?(?:number|no|id|no\.)?|numero[\s\-]?(?:client|cliente)|numéro[\s\-]?(?:client|cliente)|kundennummer|kundenid|klientennummer|client[\-\s]?id|cliente[\s\-]?(?:numero|no|id)|codice[\s\-]?cliente|klantennummer|klantnummer|customer[\s\-]?id|clnumber|custid|cust[\s\-]?number)"
             r"[\s:#\-=]+"
-            r"(?:[A-Z0-9]{2,4}[\s\-]?)?[A-Z0-9]{4,20}",
+            # Require at least one digit in the identifier to avoid matching plain names like 'Customer: John'
+            r"(?:[A-Z0-9]{2,4}[\s\-]?)?(?=[A-Z0-9]*\d)[A-Z0-9]{4,20}",
             re.UNICODE | re.MULTILINE | re.IGNORECASE
         )
 
@@ -815,42 +825,91 @@ class PIIFilter:
         self.IPV6_REGEX = r"(?i)(?<![A-F0-9:])" + ipv6_core + r"(?![A-F0-9:])"
 
         # PERSON intros (limit to max 2 tokens capture)
+
         intro_map = {
-            "en": [r"\bmy name is\s+"],
-            "de": [r"\bmein name ist\s+", r"\bich hei(?:ß|ss)e\s+"],
-            "fr": [r"\bje m(?:'|’| )appelle\s+", r"\bmon nom est\s+"],
-            "es": [r"\bme llamo\s+", r"\bmi nombre es\s+"],
-            "it": [r"\bmi chiamo\s+", r"\bil mio nome è\s+"],
-            "pt": [r"\bmeu nome é\s+", r"\bo meu nome é\s+", r"\bchamo-me\s+"],
-            "nl": [r"\bik heet\s+", r"\bmijn naam is\s+"],
+            "en": [
+                r"\bmy name is\s+",
+                r"\bi am called\s+",
+            ],
+
+            "de": [
+                r"\bmein name ist\s+",
+                r"\bich hei(?:ß|ss)e\s+",
+                # Safe variant: "ich bin" only when the next token looks like a name
+                r"\bich bin\s+(?=[A-ZÄÖÜ][a-zäöüß]+)",
+            ],
+
+            "fr": [
+                r"\bje m(?:'|’)?appelle\s+",
+                r"\bmon nom est\s+",
+            ],
+
+            "es": [
+                r"\bme llamo\s+",
+                r"\bmi nombre es\s+",
+            ],
+
+            "it": [
+                r"\bmi chiamo\s+",
+                r"\bil mio nome è\s+",
+            ],
+
+            "pt": [
+                r"\bmeu nome é\s+",
+                r"\bo meu nome é\s+",
+                r"\bchamo-me\s+",
+            ],
+
+            "nl": [
+                r"\bmijn naam is\s+",
+                r"\bik heet\s+",
+            ],
+
             "sv": [r"\bjag heter\s+"],
             "no": [r"\bjeg heter\s+"],
             "da": [r"\bjeg hedder\s+"],
-            "fi": [r"\bminun nimeni on\s+", r"\bnimeni on\s+"],
-            "is": [r"\bég heiti\s+"],
-            "pl": [r"\bnazywam si(?:ę|e)\s+"],
+
+            "fi": [
+                r"\bminun nimeni on\s+",
+                r"\bnimeni on\s+",
+            ],
+
+            "pl": [r"\bnazywam się\s+"],
             "cs": [r"\bjmenuji se\s+"],
-            "sk": [r"\bvol[aá]m sa\s+", r"\bvolám sa\s+"],
-            "hu": [r"\ba nevem\s+", r"\bh(?:í|i)vnak\s+"],
-            "ro": [r"\bnumele meu este\s+", r"\bm[ăa]\s+numesc\s+"],
+            "sk": [r"\bvolám sa\s+"],
+            "hu": [r"\ba nevem\s+", r"\bhívnak\s+"],
+
+            "ro": [
+                r"\bnumele meu este\s+",
+                r"\bm[ăa] numesc\s+",
+            ],
+
+            "ru": [r"\bменя зовут\s+"],
+            "uk": [r"\bмене звати\s+", r"\bмене звуть\s+"],
             "bg": [r"\bказвам се\s+"],
             "el": [r"\bμε λένε\s+", r"\bονομάζομαι\s+"],
-            "sq": [r"\bquhem\s+"],
-            "sl": [r"\bime mi je\s+"],
+
+            "tr": [
+                r"\bbenim ad[ıi]m\s+",
+                # This one stays *out* → r"\badım\s+" would be too risky
+            ],
+
+            "ar": [
+                r"(?:^|\b)(?:اسمي|أنا اسمي)\s+",
+            ],
+
             "hr": [r"\bzovem se\s+"],
             "bs": [r"\bzovem se\s+"],
             "sr": [r"\bzovem se\s+"],
+
             "lt": [r"\bmano vardas(?: yra)?\s+"],
             "lv": [r"\bmani sauc\s+"],
             "et": [r"\bminu nimi on\s+"],
+            "is": [r"\bég heiti\s+"],
             "mt": [r"\bjisimni\s+"],
             "ga": [r"\bis é mo ainm\s+"],
-            "ru": [r"\bменя зовут\s+"],
-            "uk": [r"\bмене звати\s+", r"\bмене звуть\s+"],
-            "be": [r"\bмяне завуць\s+"],
-            "tr": [r"\bbenim ad[ıi]m\s+"],
-            "ar": [r"(?:^|\b)(?:اسمي|انا اسمي|أنا اسمي)\s+"],
         }
+
         self.INTRO_PATTERNS = []
         for starters in intro_map.values():
             for s in starters:
@@ -894,6 +953,10 @@ class PIIFilter:
             "langsam","schnell","groß","klein","alt","jung","neu","gut","schlecht","schön",
             "hier","dort","da","wo","wann","wie","warum","was","welcher","welche","welches",
             "runter","hoch","rauf","runter","entlang","hinter","dienst","doktor","zwischen",
+            # German business/action nouns and verbs that should not be person names
+            "gründung","gründer","unternehmen","gibt","hat","habe","haben","sein",
+            "beratung","beratungszentrum","beratungszentern","zentrum","zentren",
+            "service","angebot","lösung","bieten","anbieten","anfrage",
         }
 
         self.PERSON_BLACKLIST_WORDS = {
@@ -916,6 +979,9 @@ class PIIFilter:
             "εγώ","εσύ","αυτός","αυτή","εμείς","εσείς","αυτοί","αυτές","αυτά",
             "я","ты","он","она","мы","вы","они","я","ти","він","вона","ми","ви","вони","я","ты","ён","яна","мы","вы","яны",
         }
+
+        # Titles that can introduce a following single-token person name
+        self.TITLE_TOKENS = {"herr","frau","mr","mrs","ms","dr","prof","professor","doktor"}
 
         # Street blockers (for PERSON plausibility)
         self.STREET_BLOCKERS = {
@@ -969,7 +1035,8 @@ class PIIFilter:
 
         # Simple substring cues used for quick prefix checks (lowercased)
         self.INTRO_CUES = [
-        "my name is", "je m", "mein name", "ich hei", "me llamo", "mi chiamo",
+        "my name is", "je m", "mein name", "ich hei", "ich bin", "me llamo", "mi chiamo",
+        "i am called",
         "meu nome", "chamo-me", "ik heet", "mijn naam", "jag heter", "jeg heter", "jeg hedder",
         "minun nimeni", "nimeni on", "ég heiti", "nazywam", "jmenuji se", "volám sa", "volam sa",
         "a nevem", "hívnak", "ma numesc", "mă numesc", "казвам се", "με λένε", "ονομάζομαι",
@@ -1077,57 +1144,64 @@ class PIIFilter:
             re.UNICODE
         )
         self.PAYMENT_TOKEN_RX = re.compile(
-            r"(?i)\b(?:token|payment\s*token|client\s*secret|api\s*key|api\s*token|secret(?:\s*key)?|bearer\s*token|stripe\s*key|pk_(?:live|test)_[A-Za-z0-9]{10,}|sk_(?:live|test)_[A-Za-z0-9]{10,})\b[:=\s\-]*([A-Za-z0-9_\-]{16,128})"
+            # Match labeled tokens (e.g., "token: <value>") OR common payment token prefixes like tok_...
+            r"(?i)(?:\b(?:token|payment\s*token|client\s*secret|secret(?:\s*key)?|bearer\s*token)\b[:=\s\-]*([A-Za-z0-9_\-]{16,128})|\b(tok_[A-Za-z0-9]{8,64})\b)"
         )
 
-        # API Keys - common formats (prioritize by pattern specificity, inject even without labels for better coverage)
-        self.API_KEY_PATTERNS = [
-            # Standalone AWS patterns
-            (r"\b(AKIA[0-9A-Z]{14,})\b", "aws_access_key_id"),
-            (r"(?i)aws_secret_access_key\s*=\s*([A-Za-z0-9+/]{30,})", "aws_secret_key"),
-            # GitHub tokens
-            (r"\b(github_pat_[A-Za-z0-9_]{34,})\b", "github_pat_token"),
-            (r"\b(ghp_[A-Za-z0-9_]{36,255})\b", "github_ghp_token"),
-            (r"\b(gho_[A-Za-z0-9_]{36,255})\b", "github_oauth_token"),
-            (r"\b(ghu_[A-Za-z0-9_]{36,255})\b", "github_user_to_server_token"),
-            # Stripe tokens handled by PAYMENT_TOKEN_RX (avoid mislabeling as API_KEY)
-            # Slack tokens
-            (r"\b(xoxb-[A-Za-z0-9\-]{10,48})\b", "slack_bot_token"),
-            (r"\b(xoxp-[A-Za-z0-9\-]{10,48})\b", "slack_user_token"),
-            # Labeled tokens/keys for common providers (capture labelled forms like slack_token=...)
-            (r"(?i)slack[_\s-]?token\s*[:=]\s*([A-Za-z0-9_\-]{8,128})", "slack_labeled"),
-            (r"(?i)mailchimp[_\s-]?api[_\s-]?key\s*[:=]\s*([A-Za-z0-9_\-]{8,128})", "mailchimp_labeled"),
-            (r"(?i)mailchimp[_\s-]?key\s*[:=]\s*([A-Za-z0-9_\-]{8,128})", "mailchimp_key_labeled"),
-            (r"(?i)sendgrid[_\s-]?key\s*[:=]\s*([A-Za-z0-9_\-\.]{8,128})", "sendgrid_labeled"),
-            (r"(?i)google[_\s-]?api[_\s-]?key\s*[:=]\s*([A-Za-z0-9_\-]{8,128})", "google_labeled"),
-            # Stripe labeled patterns (only match when provider label is present so unlabeled sk_/pk_ remain PAYMENT_TOKEN)
-            (r"(?i)stripe[_\s\-]?(?:secret[_\s\-]?key|secret|key)\s*[:=]\s*(sk_live_[A-Za-z0-9]{10,})", "stripe_live_secret_key_labeled"),
-            (r"(?i)stripe[_\s\-]?(?:secret[_\s\-]?key|secret|key)\s*[:=]\s*(sk_test_[A-Za-z0-9]{10,})", "stripe_test_secret_key_labeled"),
-            (r"(?i)stripe[_\s\-]?(?:public[_\s\-]?key|pk)\s*[:=]\s*(pk_live_[A-Za-z0-9]{10,})", "stripe_live_public_key_labeled"),
-            (r"(?i)stripe[_\s\-]?(?:public[_\s\-]?key|pk)\s*[:=]\s*(pk_test_[A-Za-z0-9]{10,})", "stripe_test_public_key_labeled"),
-            # SendGrid, MailChimp, DigitalOcean, OpenAI
-            (r"\b(SG\.[A-Za-z0-9_\-]{20,})\b", "sendgrid_api_key"),
-            (r"\b([a-f0-9]{32}-us[0-9]{1,2})\b", "mailchimp_api_key"),
-            (r"\b(dop_v1_[A-Za-z0-9_\-]{20,})\b", "digitalocean_api_token"),
-            (r"\b(sk-[A-Za-z0-9\-]{20,})\b", "openai_secret_key"),
-            # Stripe generic patterns (allow API_KEY detection for provider-specific contexts)
-            (r"\b(sk_live_[A-Za-z0-9]{10,})\b", "stripe_live_secret_key"),
-            (r"\b(sk_test_[A-Za-z0-9]{10,})\b", "stripe_test_secret_key"),
-            (r"\b(pk_live_[A-Za-z0-9]{10,})\b", "stripe_live_public_key"),
-            (r"\b(pk_test_[A-Za-z0-9]{10,})\b", "stripe_test_public_key"),
-            # Google and Firebase API keys (start with AIza)
-            (r"\b(AIza[A-Za-z0-9\-_]{35,})\b", "google_api_key"),
-            # JWT tokens (can contain dots, so don't use \b at end)
-            (r"\b(eyJ[A-Za-z0-9_\-\.]{100,})", "jwt_bearer_token"),
-            # Webhook secrets
-            (r"\b(whsec_[A-Za-z0-9]{30,})\b", "webhook_secret"),
-            # Labeled patterns (key=value format)
-            (r"(?i)twilio_auth_token\s*=\s*([A-Za-z0-9]{26,})", "twilio_labeled_token"),
-            (r"(?i)cloudflare_token\s*=\s*([A-Za-z0-9_\-]{30,})", "cloudflare_labeled_token"),
-            (r"(?i)azure_api_key\s*=\s*([A-Za-z0-9\-]{36})", "azure_api_labeled"),
+        # ============================================================
+        # Provider‑Specific API Key Patterns (clean + precise)
+        # ============================================================
+        self.API_KEY_PROVIDER_PATTERNS = [
+            # AWS Access Key (AKIA or ASIA followed by 12-20 chars to handle various formats)
+            (r"\b(?:AKIA|ASIA)[A-Z0-9]{12,20}\b", "aws_access_key"),
+
+            # AWS Secret Key (labeled — 40 chars base64-like)
+            (r"(?i)(?:aws_secret_access_key|aws_secret_key)\s*[:=]\s*([A-Za-z0-9/+=]{40})", "aws_secret_key_labeled"),
+
+            # Stripe Keys (both test and live, both public and secret) - allow 10+ chars to match test keys
+            (r"\b(?:sk|pk)_(?:live|test)_[0-9a-zA-Z]{10,}\b", "stripe_key"),
+
+            # GitHub Tokens (all variants)
+            (r"\bgithub_pat_[A-Za-z0-9_]{30,}\b", "github_pat"),
+            (r"\bghp_[A-Za-z0-9]{36,}\b", "github_personal_access"),
+            (r"\bgho_[A-Za-z0-9]{36,}\b", "github_oauth"),
+            (r"\bghu_[A-Za-z0-9]{36,}\b", "github_user_to_server"),
+            (r"\bghs_[A-Za-z0-9]{36,}\b", "github_server_to_server"),
+
+            # Google / Firebase API Keys
+            (r"\bAIza[0-9A-Za-z\-_]{32,}\b", "google_api"),
+
+            # SendGrid
+            (r"\bSG\.[A-Za-z0-9\-_]{22,}\b", "sendgrid"),
+
+            # DigitalOcean
+            (r"\bdop_v1_[A-Za-z0-9\-_]{40,}\b", "digitalocean"),
+
+            # OpenAI (sk-proj patterns)
+            (r"\bsk-proj-[A-Za-z0-9\-_]{20,}\b", "openai_project"),
+
+            # Slack Bot/User tokens (xoxb/xoxp prefixes)
+            (r"\bxoxb-[A-Za-z0-9\-]{10,}\b", "slack_bot_token"),
+            (r"\bxoxp-[A-Za-z0-9\-]{10,}\b", "slack_user_token"),
+
+            # Webhook Secrets (labeled or whsec prefix)
+            (r"\bwhsec_[A-Za-z0-9_]{32,}\b", "webhook_secret"),
+
+            # Twilio Auth Tokens (SK prefix + 32 chars)
+            (r"\bSK[a-f0-9]{32}\b", "twilio_auth"),
+
+            # Mailchimp API Keys (32 hex + -us region)
+            (r"\b[a-f0-9]{32}\-us\d+\b", "mailchimp_api"),
+
+            # JWT Bearer tokens (eyJ prefix)
+            (r"\beyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\b", "jwt"),
         ]
-        # Compile API Key patterns
-        self.API_KEY_RXS = [(re.compile(patt, re.UNICODE), name) for patt, name in self.API_KEY_PATTERNS]
+
+        # compile them
+        self.API_KEY_PROVIDER_RXS = [
+            (re.compile(patt, re.UNICODE), name)
+            for patt, name in self.API_KEY_PROVIDER_PATTERNS
+        ]
 
         # Session, Access Token, Refresh Token patterns
         # ORDER MATTERS - more specific patterns should come first
@@ -1163,22 +1237,22 @@ class PIIFilter:
 
         # Health patterns
         self.NHS_CAND_RX = re.compile(r"\b(?:(\d{3})\s*(\d{3})\s*(\d{4}))\b")
-        self.MRN_RX = re.compile(r"(?i)\b(?:mrn|medical\s*record\s*number|numéro\s*de\s*dossier|aktenzeichen)\b[:#\-]?\s*([A-Z0-9\-]{6,18})")
-        self.INSURANCE_ID_RX = re.compile(r"(?i)\b(?:insurance\s*(?:id|policy|member)\b|versicherungsnummer|policen(?:nummer)?|nº\s*poliza)\b[:#\-]?\s*([A-Z0-9\-]{6,20})")
-        self.HEALTH_ID_RX = re.compile(r"(?i)\b(?:health\s*id|patient\s*id|nhs\s*number)\b[:#\-]?\s*([A-Z0-9 \-]{6,20})")
+        self.MRN_RX = re.compile(r"(?i)\b(?:mrn|medical\s*record\s*number|krankenaktennummer|numéro\s*de\s*dossier|aktenzeichen)\b[:#\-]?\s*(?:(?:is|ist)\s+)?([A-Z0-9\-]{6,18})")
+        self.INSURANCE_ID_RX = re.compile(r"(?i)\b(?:insurance\s*(?:id|policy|member)\b|versicherungspolice|versicherungsnummer|policen(?:nummer)?|nº\s*poliza)\b[:#\-]?\s*(?:(?:is|ist)\s+)?([A-Z0-9\-]{6,20})")
+        self.HEALTH_ID_RX = re.compile(r"(?i)\b(?:health\s*id|patient\s*id|nhs\s*number|nhs[-_\s]?nummer)\b[:#\-]?\s*(?:(?:is|ist)\s+)?([A-Z0-9 \-]{6,20})")
         self.HEALTH_INFO_RX = re.compile(r"(?i)\b(?:diagnos(?:is|ed)|icd\-?10|icd\-?9|hiv|cancer|diabetes|pregnan(?:t|cy)|medicat(?:ion|e)|prescription|allerg(?:y|ies)|blood\s*type)\b")
 
         # Education/Employment
-        self.STUDENT_NUMBER_RX = re.compile(r"(?i)\b(?:student\s*(?:id|number)|matriculation|matrikel(?:nummer)?|matricula|roll\s*number)\b[:#\-]?\s*([A-Z0-9\-]{5,16})")
-        self.EMPLOYEE_ID_RX = re.compile(r"(?i)\b(?:employee\s*(?:id|number)|staff\s*id|personalnummer|personnel\s*number)\b[:#\-]?\s*([A-Z0-9\-]{5,16})")
-        self.PRO_LICENSE_RX = re.compile(r"(?i)\b(?:license\s*(?:no|number)|bar\s*number|medical\s*license|professional\s*license)\b[:#\-]?\s*([A-Z0-9\-]{5,20})")
+        self.STUDENT_NUMBER_RX = re.compile(r"(?i)\b(?:student\s*(?:id|number|ausweis(?:nummer)?)|matriculation|matrikel(?:nummer)?|matricula|roll\s*number)\b[:#\-]?\s*(?:(?:is|ist)\s+)?([A-Z0-9\-]{4,16})|\b(?:STU)[\-_]?[A-Z0-9]{3,10}\b")
+        self.EMPLOYEE_ID_RX = re.compile(r"(?i)\b(?:employee\s*(?:id|number)|staff\s*id|mitarbeiter(?:nummer)?|personalnummer|personnel\s*number)\b[:#\-]?\s*([A-Z0-9\-]{4,16})|\b(?:EMP)[\-_]?[A-Z0-9]{3,10}\b")
+        self.PRO_LICENSE_RX = re.compile(r"(?i)\b(?:license\s*(?:no|number|lizenz)|bar\s*number|medical\s*license|professional\s*license|berufslizenz)\b[:#\-]?\s*([A-Z0-9\-]{4,20})|\b(?:LIC)[\-_]?[A-Z0-9]{3,10}\b")
 
         # ID Documents - labeled (supports "My X is Y" and German "Meine X ist Y")
-        self.DRIVER_LICENSE_LABEL_RX = re.compile(r"(?i)(?:my\s+)?(?:driver(?:'?s)?\s*(?:license|licence|lic)|dl\s*number|f\u00fchrerschein)\b(?:\s*(?:is|ist))?[\s:]*([A-Z]\d{5,10})")
-        self.VOTER_ID_LABEL_RX = re.compile(r"(?i)(?:my\s+|meine\s+)?(?:voter\s*(?:id|card|number)|wählerausweins?(?:nummer)?)\b(?:\s+is|st)?[\s:]*([A-Z]\d{5,10})")
-        self.RESIDENCE_PERMIT_LABEL_RX = re.compile(r"(?i)(?:my\s+)?(?:residence\s*(?:permit|card)|resident\s*permit|aufenthaltsgenehmigung|aufenthaltstitel)\b(?:\s*(?:is|ist))?[\s:]*([A-Z]{2}\d{5,10})")
-        self.BENEFIT_ID_LABEL_RX = re.compile(r"(?i)(?:my\s+|meine\s+)?(?:benefit\s*(?:id|card|number)|sozialhilf(?:e|ekarte))\b(?:\s+is|st)?[\s:]*([A-Z]\d{5,10})")
-        self.MILITARY_ID_LABEL_RX = re.compile(r"(?i)(?:my\s+|meine(?:r)?\s+)?(?:military\s*(?:id|number)|militär(?:ausweis)?)\b(?:\s+is|st)?[\s:]*([A-Z]\d{5,10})")
+        self.DRIVER_LICENSE_LABEL_RX = re.compile(r"(?i)(?:my\s+|meine\s+)?(?:driver(?:'?s)?\s*(?:license|licence|lic)|dl\s*number|führerschein)\b(?:\s*(?:is|ist))?[\s:]*([A-Z]\d{5,10})")
+        self.VOTER_ID_LABEL_RX = re.compile(r"(?i)(?:my\s+|meine\s+)?(?:voter\s*(?:id|card|number)|wähler(?:ausweis)?(?:nummer)?)\b(?:\s*(?:is|ist))?[\s:]*([A-Z]\d{5,10})")
+        self.RESIDENCE_PERMIT_LABEL_RX = re.compile(r"(?i)(?:my\s+|meine\s+)?(?:residence\s*(?:permit|card)|resident\s*permit|aufenthaltsgenehmigung|aufenthaltstitel)\b(?:\s*(?:is|ist))?[\s:]*([A-Z]{2}\d{5,10})")
+        self.BENEFIT_ID_LABEL_RX = re.compile(r"(?i)(?:my\s+|meine\s+)?(?:benefit\s*(?:id|card|number)|sozialhilf(?:e|ekarte))\b(?:\s+(?:is|ist))?[\s:]*([A-Z]\d{5,10})|\b(?:B)\d{7,10}\b")
+        self.MILITARY_ID_LABEL_RX = re.compile(r"(?i)(?:my\s+|meine(?:r)?\s+)?(?:military\s*(?:id|number)|militär(?:ausweis)?)\b(?:\s+(?:is|ist))?[\s:]*([A-Z]\d{5,10})|\b(?:M)\d{7,10}\b")
 
         # Contact/Comms
         self.SOCIAL_HANDLE_RX = re.compile(r"(?<![\w@])@([A-Za-z0-9_]{3,32})(?![^\s@]*\.[^\s@])")
@@ -1196,7 +1270,14 @@ class PIIFilter:
         self.IMEI_RX = re.compile(r"\b(?:\d[ \-]?){14}\d\b")
         self.UUID_RX = re.compile(r"\b[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}\b")
         self.AD_ID_LABEL_RX = re.compile(r"(?i)\b(?:idfa|aaid|advertis(?:ing)?\s*id)\b(?:\s*(?:[:#\-]?\s*|(?:is|ist)\s+))(" + self.UUID_RX.pattern + r")")
-        self.DEVICE_ID_LABEL_RX = re.compile(r"(?i)\b(?:device\s*id|udid)\b(?:\s*(?:[:#\-]?\s*|(?:is|ist)\s+))(" + self.UUID_RX.pattern + r")")
+        self.DEVICE_ID_LABEL_RX = re.compile(r"(?i)\b(?:device\s*id|udid|Geräte\s*-?\s*id)\b(?:\s*(?:[:#\-]?\s*|(?:is|ist)\s+))(" + self.UUID_RX.pattern + r")")
+        self.DEVICE_ID_PREFIX_RX = re.compile(r"(?i)\b(?:device\s*id|Geräte\s*-?\s*id)\b[:#\-]?\s*(?:(?:is|ist)\s+)?(\bDEV-\d{8,9}\b)")  # DEV-... format
+
+        # Location extras
+        self.GEO_COORDS_RX = re.compile(r"\b([+-]?\d{1,2}\.\d+)[,\s]+([+-]?\d{1,3}\.\d+)\b")
+        self.PLUS_CODE_RX = re.compile(r"\b[23456789CFGHJMPQRVWX]{2,8}\+[23456789CFGHJMPQRVWX]{2,3}\b")
+        self.W3W_RX = re.compile(r"\b///([a-z]+(?:\.[a-z]+){2,})\b")
+        self.PLATE_LABEL_RX = re.compile(r"(?i)\b(?:license\s*plate|registration|plate\s*no|matr[ií]cula|targa|immatriculation|kennzeichen|număr\s*de\s*înmatriculare|车牌|plate)\b[:#\-]?\s*([A-Z0-9\- ]{4,12})")
 
         # Location extras
         self.GEO_COORDS_RX = re.compile(r"\b([+-]?\d{1,2}\.\d+)[,\s]+([+-]?\d{1,3}\.\d+)\b")
@@ -1219,16 +1300,16 @@ class PIIFilter:
         ]
 
         self.address_recognizer = PatternRecognizer(
-            supported_entity="ADDRESS", supported_language="en",
+            supported_entity="ADDRESS", supported_language="all",
             patterns=[Pattern("strict_address", self.STRICT_ADDRESS_REGEX, 1.0)],
         )
         phone_compact = r"(?<!\w)\+?\d{1,3}[ -]?\d{1,4}[ -]?\d{4,}\b"
         self.phone_recognizer = PatternRecognizer(
-            supported_entity="PHONE_NUMBER", supported_language="en",
+            supported_entity="PHONE_NUMBER", supported_language="all",
             patterns=[Pattern("intl_phone", phone_compact, 1.0)],
         )
         self.date_recognizer = PatternRecognizer(
-            supported_entity="DATE", supported_language="en",
+            supported_entity="DATE", supported_language="all",
             patterns=[Pattern("dob_1", self.DATE_REGEX_1, 1.0),
                       Pattern("dob_2", self.DATE_REGEX_2, 1.0),
                       Pattern("dob_3", self.DATE_REGEX_3, 1.0),
@@ -1236,125 +1317,125 @@ class PIIFilter:
                       Pattern("us_date", r"\b[A-Z][a-z]+\s+\d{1,2},?\s+\d{4}\b", 1.0)],
         )
         self.passport_recognizer = PatternRecognizer(
-            supported_entity="PASSPORT", supported_language="en",
+            supported_entity="PASSPORT", supported_language="all",
             patterns=[Pattern("us_passport", self.US_PASSPORT_REGEX, 1.02),
                       Pattern("eu_passport_generic", self.EU_PASSPORT_REGEX, 1.02)],
         )
         self.id_recognizer = PatternRecognizer(
-            supported_entity="ID_NUMBER", supported_language="en",
+            supported_entity="ID_NUMBER", supported_language="all",
             patterns=[Pattern("de_personalausweis", r"\b(?=[A-Z0-9]{9}\b)(?=.*[A-Z])[A-Z0-9]{9}\b", 1.0),
                       Pattern("ssn", r"\b\d{3}-\d{2}-\d{4}\b", 1.0)],
         )
         self.ip_recognizer = PatternRecognizer(
-            supported_entity="IP_ADDRESS", supported_language="en",
+            supported_entity="IP_ADDRESS", supported_language="all",
             patterns=[Pattern("ipv4", self.IPV4_REGEX, 1.0),
                       Pattern("ipv6", self.IPV6_REGEX, 1.0)],
         )
         self.mac_recognizer = PatternRecognizer(
-            supported_entity="MAC_ADDRESS", supported_language="en",
+            supported_entity="MAC_ADDRESS", supported_language="all",
             patterns=[Pattern("mac", self.MAC_RX.pattern, 1.0)],
         )
         self.imei_recognizer = PatternRecognizer(
-            supported_entity="IMEI", supported_language="en",
+            supported_entity="IMEI", supported_language="all",
             patterns=[Pattern("imei", self.IMEI_RX.pattern, 1.0)],
         )
         self.cc_recognizer = PatternRecognizer(
-            supported_entity="CREDIT_CARD", supported_language="en",
+            supported_entity="CREDIT_CARD", supported_language="all",
             patterns=[Pattern("cc_pan", r"(?:(?<!\w)(?:\d[ -]?){13,19}\d(?!\w))", 1.0)],
         )
         self.bank_recognizer = PatternRecognizer(
-            supported_entity="BANK_ACCOUNT", supported_language="en",
+            supported_entity="BANK_ACCOUNT", supported_language="all",
             patterns=[Pattern("iban", self.IBAN_RX.pattern, 1.0),
                       Pattern("bic", self.BIC_RX.pattern, 1.0)],
         )
         self.health_recognizer = PatternRecognizer(
-            supported_entity="HEALTH_INFO", supported_language="en",
+            supported_entity="HEALTH_INFO", supported_language="all",
             patterns=[Pattern("health_terms", r"(?i)\b(?:allergic|diagnosed|blood\s*type|diabetes|hypertension|asthma|cancer|heart\s*disease|penicillin|insulin|medication)\b", 1.0)],
         )
 
         self.plate_recognizer = PatternRecognizer(
-            supported_entity="LICENSE_PLATE", supported_language="en",
+            supported_entity="LICENSE_PLATE", supported_language="all",
             patterns=[Pattern("plate", self.PLATE_LABEL_RX.pattern, 1.0)],
         )
 
         self.person_recognizer = PatternRecognizer(
-            supported_entity="PERSON", supported_language="en",
+            supported_entity="PERSON", supported_language="all",
             # Require at least two capitalized tokens by default to reduce single-token false positives
-            patterns=[Pattern("person", r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b", 1.0)],
+            patterns=[Pattern("person", r"\b[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'’-]+(?:\s+[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'’-]+){0,3}", 1.0)],
             deny_list=self.person_deny_list
         )
 
         additional_recognizers = [
             PatternRecognizer(
-                supported_entity="ACCOUNT_NUMBER", supported_language="en",
+                supported_entity="ACCOUNT_NUMBER", supported_language="all",
                 patterns=[Pattern("account_number", r"\b\d{10}\b", 1.0)],
             ),
             PatternRecognizer(
-                supported_entity="PAYMENT_TOKEN", supported_language="en",
+                supported_entity="PAYMENT_TOKEN", supported_language="all",
                 patterns=[Pattern("payment_token", r"\bsk_live_[a-zA-Z0-9]{10,30}\b", 1.0)],
             ),
             PatternRecognizer(
-                supported_entity="ADVERTISING_ID", supported_language="en",
+                supported_entity="ADVERTISING_ID", supported_language="all",
                 patterns=[Pattern("advertising_id", r"\b[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\b", 1.0)],
             ),
             PatternRecognizer(
-                supported_entity="MRN", supported_language="en",
+                supported_entity="MRN", supported_language="all",
                 patterns=[Pattern("mrn", r"\b[A-Z]{3}-\d{6}\b", 1.0)],
             ),
             PatternRecognizer(
-                supported_entity="INSURANCE_ID", supported_language="en",
+                supported_entity="INSURANCE_ID", supported_language="all",
                 patterns=[Pattern("insurance_id", r"\bPOL-\d{9}\b", 1.0)],
             ),
             PatternRecognizer(
-                supported_entity="STUDENT_NUMBER", supported_language="en",
+                supported_entity="STUDENT_NUMBER", supported_language="all",
                 patterns=[Pattern("student_number", r"\bSTU-\d{5}\b", 1.05)],
             ),
             PatternRecognizer(
-                supported_entity="EMPLOYEE_ID", supported_language="en",
+                supported_entity="EMPLOYEE_ID", supported_language="all",
                 patterns=[Pattern("employee_id", r"\bEMP-\d{5}\b", 1.0)],
             ),
             PatternRecognizer(
-                supported_entity="PRO_LICENSE", supported_language="en",
+                supported_entity="PRO_LICENSE", supported_language="all",
                 patterns=[Pattern("pro_license", r"\bLIC-\d{5}\b", 1.0)],
             ),
             PatternRecognizer(
-                supported_entity="HEALTH_ID", supported_language="en",
+                supported_entity="HEALTH_ID", supported_language="all",
                 patterns=[Pattern("health_id", r"\b\d{3} \d{3} \d{4}\b", 1.0)],
             ),
             PatternRecognizer(
-                supported_entity="DRIVER_LICENSE", supported_language="en",
+                supported_entity="DRIVER_LICENSE", supported_language="all",
                 patterns=[Pattern("driver_license", r"\bD\d{7}\b", 1.0)],
             ),
             PatternRecognizer(
-                supported_entity="VOTER_ID", supported_language="en",
+                supported_entity="VOTER_ID", supported_language="all",
                 patterns=[Pattern("voter_id", r"\bV\d{7}\b", 1.0)],
             ),
             PatternRecognizer(
-                supported_entity="RESIDENCE_PERMIT", supported_language="en",
+                supported_entity="RESIDENCE_PERMIT", supported_language="all",
                 patterns=[Pattern("residence_permit", r"\bRP\d{6}\b", 1.0)],
             ),
             PatternRecognizer(
-                supported_entity="MEETING_ID", supported_language="en",
+                supported_entity="MEETING_ID", supported_language="all",
                 patterns=[Pattern("meeting_id", r"\b\d{3} \d{3} \d{3}\b", 1.0)],
             ),
             PatternRecognizer(
-                supported_entity="GEO_COORDINATES", supported_language="en",
+                supported_entity="GEO_COORDINATES", supported_language="all",
                 patterns=[Pattern("geo_coordinates", r"\b\d{1,3}\.\d{4}, \d{1,3}\.\d{4}\b", 1.0)],
             ),
             PatternRecognizer(
-                supported_entity="FAX_NUMBER", supported_language="en",
+                supported_entity="FAX_NUMBER", supported_language="all",
                 patterns=[Pattern("fax", r"\b\+?\d{1,3} \d{2,4} \d{4,}\b", 1.0)],
             ),
             PatternRecognizer(
-                supported_entity="BENEFIT_ID", supported_language="en",
+                supported_entity="BENEFIT_ID", supported_language="all",
                 patterns=[Pattern("benefit_id", r"\bB\d{8}\b", 1.0)],
             ),
             PatternRecognizer(
-                supported_entity="MILITARY_ID", supported_language="en",
+                supported_entity="MILITARY_ID", supported_language="all",
                 patterns=[Pattern("military_id", r"\bM\d{8}\b", 1.0)],
             ),
             PatternRecognizer(
-                supported_entity="DEVICE_ID", supported_language="en",
+                supported_entity="DEVICE_ID", supported_language="all",
                 patterns=[Pattern("device_id", r"\bDEV-\d{9}\b", 1.05)],
             ),
         ]
@@ -1385,10 +1466,32 @@ class PIIFilter:
         s = span.strip()
         if not s:
             return False
+        # DO NOT allow digits inside a person name
+        if any(ch.isdigit() for ch in span):
+            return False
+
+        # Reject UUID/GUID patterns
+        if re.fullmatch(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", span):
+            return False
+
+        # Reject alphanumeric codes (MIT-2024-778899, RP333444, EMP-12345, etc.)
+        if re.fullmatch(r"[A-Za-z]{1,5}-?\d{3,}", span):
+            return False
+
+        # Reject 100% uppercase tokens
+        if span.isupper():
+            return False
+
+        # Reject tokens that look like OTP / PIN
+        if re.fullmatch(r"\d{4,10}", span):
+            return False      
+        
         if re.search(r"\b(mail|e-mail|email|correo|e-?posta|adresse|address|telefon|phone|tel)\b", s, re.I):
             return False
+       
         if re.search(r"\b(appelle|numero|nummer|número|policy|license|licence|kontonummer|passeport|passport)\b", s, re.I):
             return False
+       
         if re.match(r"^\s*(?:je\s+m['’]|j['’]|je m['’])", s.lower()):
             return False
 
@@ -1403,18 +1506,56 @@ class PIIFilter:
             return False
         if any(tok in self.PERSON_BLACKLIST_WORDS for tok in low):
             return False
-        if any(tok in self.STREET_BLOCKERS for tok in low):
+        if all(tok in self.STREET_BLOCKERS for tok in low):
             return False
         if any(tok in self.NON_PERSON_SINGLE_TOKENS for tok in low):
             return False
         if len(tokens) > 1:
-            # Require at least one capitalized Latin token
+            # Require at least one capitalized Latin token among tokens that start with a letter
             latin_tokens = [t for t in tokens if re.match(r"^[A-Za-zÀ-ÖØ-öø-ÿĀ-ſ]", t)]
+            # If there are Latin-script tokens, require at least one capitalized Latin token
             if latin_tokens and not any(t[0].isupper() for t in latin_tokens):
                 return False
-            return True
+
+            # Reject obvious sentence fragments that start with pronouns/auxiliary verbs
+            non_person_words = {
+                "ich", "du", "er", "sie", "es", "wir", "ihr",
+                "möchte", "kann", "werde", "würde", "habe", "bin", "ist", "sind", "hat",
+                "für", "von", "zu", "auf", "bei", "mit", "ohne", "in", "das", "der", "die", "den", "dem",
+            }
+            if any(tok.lower() in non_person_words for tok in tokens[:2]):
+                return False
+
+            # Require tokens to look like a name in DE/EN when Latin-script tokens are present
+            if latin_tokens:
+                if not self._looks_like_name_de_en(tokens):
+                    return False
+                return True
+
+            # For non-Latin scripts (e.g., Cyrillic, Greek, Arabic), be permissive:
+            # accept multi-token spans where each token contains alphabetic characters
+            # and tokens are not blacklisted or street-like.
+            # This avoids over-relying on Latin capitalization heuristics.
+            if all(any(ch.isalpha() for ch in t) for t in tokens):
+                if any(tok in self.PERSON_BLACKLIST_WORDS for tok in low):
+                    return False
+                if all(tok in self.STREET_BLOCKERS for tok in low):
+                    return False
+                return True
+            return False
         t0 = low[0]
         if t0 in self.PRONOUN_PERSONS:
+            return False
+
+        # Single-token names: be conservative — accept only when preceded by an intro cue or a title
+        if len(tokens) == 1:
+            # Accept if clearly introduced ("my name is Anna")
+            if self._has_intro_prefix(text, start):
+                return True
+            # Accept if immediately preceded by a title (Herr/Frau/Dr/Mr/etc.)
+            left = text[max(0, start - 40):start]
+            if re.search(r"\b(?:" + "|".join(re.escape(t) for t in self.TITLE_TOKENS) + r")\b\s*$", left, re.I):
+                return True
             return False
         
         
@@ -1425,12 +1566,60 @@ class PIIFilter:
         if any(sb in left_ctx for sb in self.STREET_BLOCKERS) and not any(cue in prefix for cue in self.INTRO_CUES):
             return False
 
+        # 
         # intro cue check (if present, we'll accept a person span)
+        # BUT: only if the span is close to the intro cue (within ~20 chars) to avoid false positives
+        # where an intro cue appears much earlier but is followed by unrelated text
         if any(cue in prefix for cue in self.INTRO_CUES):
-            return True
+            # Check if the intro cue is CLOSE (recent) - within last 20 characters
+            # This filters out cases like "mein name ist Frank Verz, [20+ chars later] Gewerbe"
+            close_prefix = text[max(0, start - 20):start].lower()
+            if any(cue in close_prefix for cue in self.INTRO_CUES):
+                # Intro cue is very close, likely directly connected to this span - accept it
+                return True
+            else:
+                # Intro cue is 20-40 chars back - too far to reliably apply to this span
+                # For multi-token spans, be extra conservative and don't accept
+                if len(tokens) > 1:
+                    # Check for context-breaking words that confirm this isn't a name
+                    intervening = text[max(0, start - 40):start + 15].lower()
+                    context_breakers = {
+                        "möchte", "kann", "werde", "würde", "habe", "hab", "bin", "ist", "sind", "hat", "had", "have",
+                        "für", "von", "zu", "zum", "zur", "auf", "bei", "mit", "ohne",
+                        "anmelden", "anmeldung", "anfrage", "anfragen", "dienst", "dienste",
+                        "ein", "eine", "einer", "einem", "einen",
+                    }
+                    if any(word in intervening for word in context_breakers):
+                        return False
+                    # Even without explicit context breakers, don't trust far-away intro cues for multi-token spans
+                    return False
         if re.match(r"^[A-Za-zÀ-ÖØ-öø-ÿĀ-ſ]", tokens[0]) and not tokens[0][0].isupper():
             return False
         return True
+
+    def _looks_like_name_de_en(self, tokens: list) -> bool:
+        """Heuristic: return True if tokens plausibly form a personal name in DE/EN.
+        - At least one token starts with a capital letter (for Latin scripts)
+        - No digits present
+        - Tokens are not street blockers or single-token non-person tokens
+        """
+        if not tokens:
+            return False
+        # no digits
+        if any(re.search(r"\d", t) for t in tokens):
+            return False
+        low = [t.lower() for t in tokens]
+        # Avoid all-street/component tokens
+        if all(tok in self.STREET_BLOCKERS for tok in low):
+            return False
+        # Avoid obvious non-person single tokens
+        if any(tok in self.NON_PERSON_SINGLE_TOKENS for tok in low):
+            return False
+        # At least one capitalized token among letter-starting tokens
+        for t in tokens:
+            if re.match(r"^[A-Za-zÀ-ÖØ-öø-ÿĀ-ſ]", t) and t[0].isupper():
+                return True
+        return False
 
     def _inject_name_intro_persons(self, text, results):
         add = []
@@ -1532,6 +1721,22 @@ class PIIFilter:
                 out.append(r)
                 continue
             if any(not (r.end <= ds or r.start >= de) for ds, de in dates):
+                continue
+            out.append(r)
+        return out
+
+    def _demote_phone_over_health_id(self, text, items):
+        """Prevent NHS numbers (944 476 5919 format) from being detected as PHONE"""
+        health_ids = [(r.start, r.end) for r in items if r.entity_type == "HEALTH_ID"]
+        if not health_ids:
+            return items
+        out = []
+        for r in items:
+            if r.entity_type != "PHONE_NUMBER":
+                out.append(r)
+                continue
+            # Skip PHONE if it overlaps with HEALTH_ID
+            if any(not (r.end <= hs or r.start >= he) for hs, he in health_ids):
                 continue
             out.append(r)
         return out
@@ -1782,7 +1987,8 @@ class PIIFilter:
 
     def _trim_address_spans(self, text, items):
         """Trim ADDRESS spans at first newline or before label words to avoid bleed."""
-        label_stops = re.compile(r"(?i)\b(email|e-mail|mail|meine|la mia email|mon email|adresse)\b")
+        label_stops = re.compile(r"(?i)\b(email|e-mail|mail|meine|la mia email|mon email|adresse|für|gründung|unternehmen)\b")
+        multiline_addr = re.compile(r"(?i)(?:nr\.?|no\.?|number|nummer|num)\s*:?\s*\d|(?:plz\/ort|plz|postal|city|stadt|ort)", re.MULTILINE)
         out = []
         for r in items:
             if r.entity_type != "ADDRESS":
@@ -1790,7 +1996,15 @@ class PIIFilter:
                 continue
             s, e = r.start, r.end
             span = text[s:e]
-            cut = span.find("\n")
+            
+            # Check if this is a multi-line address (has number or city labels on different lines)
+            has_multiline = bool(multiline_addr.search(span))
+            
+            # Only trim at first newline if this is NOT a multi-line tagged address
+            cut = -1
+            if not has_multiline:
+                cut = span.find("\n")
+            
             if cut != -1:
                 e = s + cut
             else:
@@ -1799,6 +2013,16 @@ class PIIFilter:
                     e = s + m.start()
             trimmed = span[:e - s].rstrip(" .,:;–—")
             if trimmed:
+                # Additional filter: DROP addresses that don't contain house numbers or street types that require numbers
+                # E.g., "Tempelhof-Shöneberg" is just a district name, not a complete address
+                # Valid addresses should have digits (house numbers) or be specific street patterns
+                if not re.search(r"\d", trimmed):
+                    # No digits - check if it's a district that got misdetected
+                    # If it doesn't contain typical address markers, skip it
+                    addr_markers = r"(?i)\b(straße|strasse|str\.?|street|avenue|avenue|weg|platz|gasse|ring|allée|allee)"
+                    if not re.search(addr_markers, trimmed):
+                        # No street type patterns either - likely just a location name, not a residential address
+                        continue
                 out.append(RecognizerResult("ADDRESS", s, s + len(trimmed), r.score))
             else:
                 out.append(r)
@@ -1922,6 +2146,29 @@ class PIIFilter:
     def _geo_in_bounds(lat: float, lon: float) -> bool:
         return -90.0 <= lat <= 90.0 and -180.0 <= lon <= 180.0
 
+    def _looks_like_api_key(self, token: str) -> bool:
+        """Generic unseen-provider API key detector."""
+        if len(token) < 28:
+            return False
+
+        # reject UUID (big false positive)
+        if re.fullmatch(
+            r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-"
+            r"[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
+            r"[0-9a-fA-F]{12}", token
+        ):
+            return False
+
+        # reject natural-language‑ish strings
+        if re.search(r"[aeiouAEIOU]", token) and len(set(token)) < len(token) * 0.6:
+            return False
+
+        # entropy score
+        p = {c: token.count(c) / len(token) for c in set(token)}
+        entropy = -sum(v * math.log2(v) for v in p.values())
+
+        return entropy >= 3.2
+
     # ====================
     # CUSTOM INJECTIONS
     # ====================
@@ -1948,22 +2195,45 @@ class PIIFilter:
         for m in self.EMAIL_RX.finditer(text):
             add.append(RecognizerResult("EMAIL", m.start(), m.end(), 1.0))
 
-        # API Keys — inject early (before PHONE/ADDRESS/etc) so they win overlaps
-        for rx, _name in self.API_KEY_RXS:
-            for m in rx.finditer(text):
-                s, e = (m.start(1), m.end(1)) if m.lastindex else (m.start(), m.end())
-                api_key = text[s:e].strip()
-                # Avoid very short strings or common false positives
-                if len(api_key) >= 12 and not re.match(r'^[A-Za-z\-_\.]{1,5}$', api_key):
-                    # If left context is a generic 'api key' phrase, prefer PAYMENT_TOKEN matching later
-                    left_ctx = text[max(0, s - 32):s].lower()
-                    # Only treat as generic API key when left context contains API key phrasing
-                    # (support simple multilingual variants, avoid underscored labels like 'google_api_key')
-                    if ("api" in left_ctx) and any(syn in left_ctx for syn in ("key", "schl", "schlu", "schluessel", "schlüssel")):
-                        continue
-                    # High score so API_KEY wins overlaps with PHONE, ADDRESS, etc.
-                    add.append(RecognizerResult("API_KEY", s, e, 1.05))
+        # ============================================================
+        # EARLY API KEY DETECTION — PROVIDER KEYS + api_key=
+        # (Runs before ID/PHONE/MAC shredding – critical!)
+        # ============================================================
 
+        # --- Provider patterns (AWS, GitHub, OpenAI, Cloudflare, Slack…) ---
+        for rx, name in self.API_KEY_PROVIDER_RXS:
+            for m in rx.finditer(text):
+                s, e = m.start(), m.end()
+                # Use capturing groups if available
+                if m.lastindex:
+                    s, e = m.start(1), m.end(1)
+                add.append(RecognizerResult("API_KEY", s, e, 1.20))
+
+        # --- Provider-specific labeled patterns (more targeted) ---
+        # Slack labeled patterns
+        for m in re.finditer(r"(?i)\bslack[_\s-]*(?:api_?)?token\s*[:=]\s*([A-Za-z0-9_\-]{12,})", text):
+            s, e = m.start(1), m.end(1)
+            add.append(RecognizerResult("API_KEY", s, e, 1.19))
+        
+        # Stripe labeled patterns
+        for m in re.finditer(r"(?i)(?:stripe[_\s-]*)?(?:secret|public)[_\s-]*key\s*[:=]\s*([a-z0-9_]{16,})", text):
+            s, e = m.start(1), m.end(1)
+            add.append(RecognizerResult("API_KEY", s, e, 1.19))
+        
+        # Cloudflare labeled patterns
+        for m in re.finditer(r"(?i)\bcloudflare[_\s-]*(?:api_?)?token\s*[:=]\s*([a-z0-9]{32,})", text):
+            s, e = m.start(1), m.end(1)
+            add.append(RecognizerResult("API_KEY", s, e, 1.19))
+        
+        # Generic labeled api_key= (lower priority to avoid false positives)
+        for m in re.finditer(
+            r"(?i)\b(?:google|azure|github|sendgrid|mailchimp|twilio|digitalocean|firebase|openai|stripe|aws)[_\s-]*(?:api[_-]?)?key\s*[:=]\s*([A-Za-z0-9._\-+/=]{12,})",
+            text,
+        ):
+            s, e = m.start(1), m.end(1)
+            add.append(RecognizerResult("API_KEY", s, e, 1.18))
+    
+        # ============================================================
         # SESSION_ID, ACCESS_TOKEN, REFRESH_TOKEN, ACCESS_CODE, OTP_CODE — inject early with high scores
         for rx, ent_name in self.TOKEN_RXS:
             for m in rx.finditer(text):
@@ -1983,6 +2253,40 @@ class PIIFilter:
                         add.append(RecognizerResult("ACCESS_CODE", s, e, 1.03))
                     elif "token" in ent_name.lower():
                         add.append(RecognizerResult("ACCESS_TOKEN", s, e, 1.04))
+
+        # ============================================= #
+        # API KEY DETECTION                             #
+        # ============================================= #
+        # entropy fallback — AFTER token detectors only #
+        #---------------------------------------------- #
+
+        for m in re.finditer(r"\b[A-Za-z0-9._\-+/=]{28,}\b", text):
+            token = m.group(0)
+
+            # Do not override tokens
+            if any(
+                r.entity_type in (
+                    "SESSION_ID",
+                    "ACCESS_TOKEN",
+                    "REFRESH_TOKEN",
+                    "ACCESS_CODE",
+                    "OTP_CODE",
+                )
+                and not (m.end() <= r.start or m.start() >= r.end)
+                for r in add
+            ):
+                continue
+
+            if self._looks_like_api_key(token):
+                add.append(RecognizerResult("API_KEY", m.start(), m.end(), 1.05))
+
+        # ----- Stripe public/secret → Stay as API_KEY (not converting to PAYMENT_TOKEN) -----
+        # Stripe and OpenAI keys are now classified and kept as API_KEY for consistency
+        # This allows tests to properly detect them as <API_KEY>
+        # Users can differentiate by context or use additional flags if needed
+
+
+                 
 
         # Reference/Tracking Identifiers — business/legal/government context (inject after CASE_REFERENCE)
         # FILE_NUMBER: Labeled file identifiers
@@ -2014,8 +2318,18 @@ class PIIFilter:
                 continue
             # If an intro cue immediately precedes this span (e.g., "Je m'appelle Rue Victor"),
             # prefer PERSON and skip injecting an ADDRESS so the intro-based PERSON can win.
-            prefix = text[max(0, s - 48):s].lower()
+            # Consider a small right-context as intro cues may overlap the match start
+            prefix = text[max(0, s - 48):s + 16].lower()
             if any(cue in prefix for cue in self.INTRO_CUES):
+                continue
+            # Guard against matching education/employment IDs as addresses (e.g., "student ID is STU-12345"
+            # where "student" contains "tal" which is a street suffix in German).
+            # Check the broader context to see if this is actually an ID label
+            broader_span = text[max(0, s - 50):e + 10].lower()
+            if any(label in broader_span for label in ["student id", "student number", "studentenausweis",
+                                                       "employee id", "employee number",
+                                                       "professional license", "license number",
+                                                       "pro license", "credential"]):
                 continue
             # Conservative guard: require either a house number or an explicit street suffix to reduce city-name false positives
             if not re.search(r"\d", span):
@@ -2040,7 +2354,8 @@ class PIIFilter:
             if any(not (e <= a.start or s >= a.end) for a in add if a.entity_type in ("EMAIL", "EMAIL_ADDRESS")):
                 continue
             # If an intro cue immediately precedes this span, prefer PERSON and skip injecting ADDRESS
-            prefix = text[max(0, s - 48):s].lower()
+            # Consider small right-context so intro cues that overlap the match cancel ADDRESS injection
+            prefix = text[max(0, s - 48):s + 16].lower()
             if any(cue in prefix for cue in self.INTRO_CUES):
                 continue
             # Avoid duplicate ADDRESS injections
@@ -2088,6 +2403,150 @@ class PIIFilter:
                     if any(k in left or k in right for k in self.ID_KEYWORDS):
                         continue
                     add.append(RecognizerResult("PHONE_NUMBER", s, e, 0.90))
+        
+        # Combine labeled multi-line address fragments into ADDRESS when possible
+        # e.g. "Straße: Hauptstraße\nNr.: 10\nPLZ/Ort: 10115 Berlin" or
+        # "Street: Baker St.\nNumber: 221B\nCity: London"
+        locs = [r for r in add if r.entity_type == "LOCATION"]
+        for loc in locs:
+            # find the newline that starts the LOCATION line
+            loc_line_start = text.rfind("\n", 0, loc.start)
+            if loc_line_start == -1:
+                continue
+            # previous line (likely number label)
+            prev_line_end = loc_line_start
+            prev_line_start = text.rfind("\n", 0, prev_line_end - 1)
+            prev_line = text[prev_line_start + 1:prev_line_end].strip() if prev_line_start != -1 else text[:prev_line_end].strip()
+            # line above that (likely street label)
+            prev2_end = prev_line_start
+            if prev2_end == -1:
+                continue
+            prev2_start = text.rfind("\n", 0, prev2_end - 1)
+            prev2_line = text[prev2_start + 1:prev2_end].strip() if prev2_start != -1 else text[:prev2_end].strip()
+
+            low2 = prev2_line.lower()
+            low1 = prev_line.lower()
+            # street label detection — use substring checks to tolerate punctuation like ':'
+            if not any(k in low2 for k in ("straße", "strasse", "str.", "street", "st.")):
+                continue
+            # number label detection — tolerate 'Nr', 'No', 'Number', 'Nr.' etc.
+            if not any(k in low1 for k in ("nr", "no", "number", "nummer", "num")):
+                continue
+            # Anchor near first capitalized token in street line
+            mname = re.search(r"[A-ZÀ-ÖØ-ÝÄÖÜ][\w'’\.-]+", prev2_line)
+            if not mname:
+                continue
+            s = prev2_start + 1 + mname.start()
+            e = loc.end
+            # If an overlapping ADDRESS exists, prefer expanding smaller spans to the larger merged span
+            overlaps = [a for a in add if a.entity_type == "ADDRESS" and not (e <= a.start or s >= a.end)]
+            if overlaps:
+                expanded = False
+                for a in overlaps:
+                    # if the new span fully contains an existing smaller ADDRESS, replace it with the expanded span
+                    if s <= a.start and e >= a.end:
+                        try:
+                            add.remove(a)
+                        except ValueError:
+                            pass
+                        add.append(RecognizerResult("ADDRESS", s, e, max(a.score, 1.03)))
+                        expanded = True
+                        break
+                if not expanded:
+                    # otherwise keep existing address(es)
+                    continue
+            else:
+                add.append(RecognizerResult("ADDRESS", s, e, 1.03))
+        # Also detect fully labeled 3-line address blocks (street + number + city) even when no postal code was matched
+        # Pattern matches: street_label:value\nnumber_label:value\ncity_label:value
+        # Requires labels to be followed by colon or whitespace (to avoid matching "St." as a label when it's part of an address value)
+        block_rx = re.compile(
+            r"(?im)"
+            r"(?:straße|strasse|str|street|adresse|address|rue)(?:\.|:|\s)(?:\s*:?\s*)([^\n:]+)"
+            r"(?:\n\s*(?:nr|no|number|nummer|num)(?:\.|:|\s)(?:\s*:?\s*)([^\n:]+))?"
+            r"(?:\n\s*(?:plz(?:/ort)?|postal|city|stadt|ort|ville|ciudad)(?:\.|:|\s)(?:\s*:?\s*)([^\n:]+))?"
+        )
+        
+        _debug_block = False  # "Straße: Hauptstraße" in text and "Nr.:" in text
+        if _debug_block:
+            print(f"[DEBUG] block_rx processing. Current add list has {len(add)} entities:")
+            for i, ent in enumerate(add):
+                print(f"  [{i}] {ent.entity_type:15s} ({ent.start:3d}, {ent.end:3d}): {repr(text[ent.start:min(ent.end,ent.start+30)])}")
+        
+        for m in block_rx.finditer(text):
+            # Extract the matched groups
+            street_val = m.group(1)
+            number_val = m.group(2)
+            city_val = m.group(3)
+            
+            # Both number and city must be present for a valid address block
+            if not (number_val and city_val):
+                continue
+            
+            _debug_block2 = False  # "Straße: Hauptstraße" in text and "Nr.:" in text
+            if _debug_block2:
+                print(f"\n[DEBUG] block_rx matched! Groups: street={street_val!r}, number={number_val!r}, city={city_val!r}")
+            
+            s = m.start(1)
+            # Calculate the end position: use the furthest non-None group's end
+            if m.group(3):
+                e = m.end(3)
+            elif m.group(2):
+                e = m.end(2)
+            else:
+                e = m.end(1)
+            
+            if _debug_block2:
+                print(f"[DEBUG] Creating ADDRESS span: ({s}, {e}) = {repr(text[s:e][:50])}")
+            
+            overlaps = [a for a in add if a.entity_type == "ADDRESS" and not (e <= a.start or s >= a.end)]
+            if _debug_block2:
+                print(f"[DEBUG] Found {len(overlaps)} overlapping ADDRESS entities")
+                for ov in overlaps:
+                    print(f"  Overlap: ({ov.start}, {ov.end})")
+                    print(f"    Condition 1 (contains): {s <= ov.start and e >= ov.end}")
+                    print(f"    Condition 2 (overlap_start): {s <= ov.start and e > ov.start}")
+                    print(f"    Condition 3 (overlap_end): {s < ov.end and e >= ov.end}")
+                    print(f"    Width comparison: new={e-s}, old={ov.end - ov.start}, new_wider={e > ov.end - ov.start}")
+            
+            if overlaps:
+                expanded = False
+                for a in overlaps:
+                    # If the new merged span fully contains an existing ADDRESS, or overlaps significantly, expand
+                    if (s <= a.start and e >= a.end) or (s <= a.start and e > a.start) or (s < a.end and e >= a.end):
+                        if _debug_block2:
+                            print(f"[DEBUG] Merging: old=({a.start}, {a.end}), new=({s}, {e})")
+                        try:
+                            add.remove(a)
+                        except ValueError:
+                            pass
+                        # Create a new span that covers both the old and new extents
+                        new_s = min(s, a.start)
+                        new_e = max(e, a.end)
+                        add.append(RecognizerResult("ADDRESS", new_s, new_e, max(a.score, 1.03)))
+                        expanded = True
+                        break
+                if not expanded:
+                    # If there's an overlap but can't merge, prefer the larger new span over the smaller old one
+                    for a in overlaps:
+                        if e > a.end - a.start:  # New span is wider than old span
+                            if _debug_block2:
+                                print(f"[DEBUG] Replacing smaller old with new: new=({s}, {e}), old=({a.start}, {a.end})")
+                            try:
+                                add.remove(a)
+                            except ValueError:
+                                pass
+                            add.append(RecognizerResult("ADDRESS", s, e, max(a.score, 1.03)))
+                            expanded = True
+                            break
+                if not expanded:
+                    if _debug_block2:
+                        print(f"[DEBUG] NO expansion happened, skipping new ADDRESS")
+                    continue
+            else:
+                if _debug_block2:
+                    print(f"[DEBUG] No overlaps, adding ADDRESS ({s}, {e}) directly")
+                add.append(RecognizerResult("ADDRESS", s, e, 1.03))
 
         # Fax (label-led)
         for fax in self.FAX_LABEL_RX.finditer(text):
@@ -2100,7 +2559,7 @@ class PIIFilter:
                 add.append(RecognizerResult("FAX_NUMBER", s, e, 1.05))
 
         # Dates
-        for patt in (self.DATE_REGEX_1, self.DATE_REGEX_2, self.DATE_REGEX_3):
+        for patt in (self.DATE_REGEX_1, self.DATE_REGEX_2, self.DATE_REGEX_3, self.DATE_REGEX_4, self.DATE_REGEX_5):
             for m in re.finditer(patt, text, flags=re.I | re.UNICODE):
                 add.append(RecognizerResult("DATE", m.start(), m.end(), 0.93))
         # Filter out common relative date words (e.g., 'today') which are not PII in noisy text
@@ -2385,7 +2844,15 @@ class PIIFilter:
 
         # Payment/API tokens
         for m in self.PAYMENT_TOKEN_RX.finditer(text):
-            s, e = (m.start(1), m.end(1)) if m.lastindex else (m.start(), m.end())
+            # Determine which capturing group matched (group 1 or group 2)
+            s = e = None
+            if m.lastindex:
+                for gi in range(1, m.lastindex + 1):
+                    if m.group(gi):
+                        s, e = m.start(gi), m.end(gi)
+                        break
+            if s is None:
+                s, e = m.start(), m.end()
             token = text[s:e]
             if len(token) >= 16:
                 # If left context explicitly mentions 'api key' (or localizations), prefer PAYMENT_TOKEN
@@ -2410,52 +2877,38 @@ class PIIFilter:
                     score = 0.90
                 add.append(RecognizerResult("CRYPTO_ADDRESS", s, e, score))
 
-        # Post-process: convert unlabeled stripe-like API_KEY injections to PAYMENT_TOKEN
-        # when left context indicates 'api key' (multilingual). This makes classification deterministic.
-        transformed = []
-        for r in list(add):
-            if r.entity_type == "API_KEY":
-                span_text = text[r.start:r.end]
-                # stripe/openai-like tokens
-                if re.search(r"\b(?:sk_(?:live|test)_|pk_(?:live|test)_|sk-[A-Za-z0-9\-]{6,})", span_text, flags=re.I):
-                    left_ctx = text[max(0, r.start - 128):r.start].lower()
-                    if ("api" in left_ctx) and any(syn in left_ctx for syn in ("key", "schl", "schlu", "schluessel", "schlüssel")):
-                        # remove existing API_KEY entry
-                        try:
-                            add.remove(r)
-                        except ValueError:
-                            pass
-                        # add PAYMENT_TOKEN with high score
-                        add.append(RecognizerResult("PAYMENT_TOKEN", r.start, r.end, 1.07))
-        # end post-process
+        # Post-process: stripe/openai-like API_KEY tokens remain as API_KEY
+        # for consistency and to meet test requirements. These are actual API keys that should
+        # be classified as such, not payment tokens. PAYMENT_TOKEN is reserved for payment-specific tokens.
+
 
         # Health IDs & Info
         for m in self.HEALTH_ID_RX.finditer(text):
             s, e = (m.start(1), m.end(1)) if m.lastindex else (m.start(), m.end())
             val = text[s:e]
             if re.search(r"\b\d{3}\s*\d{3}\s*\d{4}\b", val) and self._nhs_ok(val):
-                add.append(RecognizerResult("HEALTH_ID", s, e, 0.97))
+                add.append(RecognizerResult("HEALTH_ID", s, e, 1.05))  # Higher than PHONE
             else:
-                add.append(RecognizerResult("HEALTH_ID", s, e, 0.85))
+                add.append(RecognizerResult("HEALTH_ID", s, e, 0.95))
         for m in self.MRN_RX.finditer(text):
             s, e = (m.start(1), m.end(1)) if m.lastindex else (m.start(), m.end())
-            add.append(RecognizerResult("MRN", s, e, 0.90))
+            add.append(RecognizerResult("MRN", s, e, 0.95))  # Increased from 0.90
         for m in self.INSURANCE_ID_RX.finditer(text):
             s, e = (m.start(1), m.end(1)) if m.lastindex else (m.start(), m.end())
-            add.append(RecognizerResult("INSURANCE_ID", s, e, 0.90))
+            add.append(RecognizerResult("INSURANCE_ID", s, e, 0.95))
         for m in self.HEALTH_INFO_RX.finditer(text):
             add.append(RecognizerResult("HEALTH_INFO", m.start(), m.end(), 1.0))
 
         # Education/Employment
         for m in self.STUDENT_NUMBER_RX.finditer(text):
             s, e = (m.start(1), m.end(1)) if m.lastindex else (m.start(), m.end())
-            add.append(RecognizerResult("STUDENT_NUMBER", s, e, 0.88))
+            add.append(RecognizerResult("STUDENT_NUMBER", s, e, 0.95))  # Increased from 0.88
         for m in self.EMPLOYEE_ID_RX.finditer(text):
             s, e = (m.start(1), m.end(1)) if m.lastindex else (m.start(), m.end())
-            add.append(RecognizerResult("EMPLOYEE_ID", s, e, 0.90))
+            add.append(RecognizerResult("EMPLOYEE_ID", s, e, 0.95))  # Increased from 0.90
         for m in self.PRO_LICENSE_RX.finditer(text):
             s, e = (m.start(1), m.end(1)) if m.lastindex else (m.start(), m.end())
-            add.append(RecognizerResult("PRO_LICENSE", s, e, 0.88))
+            add.append(RecognizerResult("PRO_LICENSE", s, e, 0.95))  # Increased from 0.88
 
         # Contact/Comms
         for m in self.SOCIAL_HANDLE_RX.finditer(text):
@@ -2488,6 +2941,9 @@ class PIIFilter:
         for m in self.DEVICE_ID_LABEL_RX.finditer(text):
             s, e = (m.start(1), m.end(1)) if m.lastindex else (m.start(), m.end())
             add.append(RecognizerResult("DEVICE_ID", s, e, 0.88))
+        for m in self.DEVICE_ID_PREFIX_RX.finditer(text):
+            s, e = (m.start(1), m.end(1)) if m.lastindex else (m.start(), m.end())
+            add.append(RecognizerResult("DEVICE_ID", s, e, 1.05))  # Higher score to beat generic ID
 
         # Geographic coordinates, plus codes and what3words
         for m in self.GEO_COORDS_RX.finditer(text):
@@ -2640,6 +3096,18 @@ class PIIFilter:
                 # If the PERSON span contains a strict-address with a house number, pull it out as ADDRESS
                 addr_m = self.STRICT_ADDRESS_RX.search(span)
                 if addr_m and re.search(r"\d", addr_m.group()):
+                    # Guard against matching education/employment IDs as addresses (e.g., "student ID is STU-12345"
+                    # where "student" contains "tal" which is a street suffix in German).
+                    broader_ctx = text[max(0, r.start - 50):r.end + 10].lower()
+                    if any(label in broader_ctx for label in ["student id", "student number", "studentenausweis",
+                                                              "employee id", "employee number",
+                                                              "professional license", "license number",
+                                                              "pro license", "credential"]):
+                        # This is likely an education/employment ID, not an address - skip extracting as ADDRESS
+                        if not self._plausible_person(span, text, r.start):
+                            continue
+                        filtered.append(r)
+                        continue
                     # address coordinates in original text
                     addr_s = r.start + (addr_m.start() + (offset if offset else 0))
                     addr_e = r.start + (addr_m.end() + (offset if offset else 0))
@@ -2676,14 +3144,46 @@ class PIIFilter:
             final = preserved
         
         # Drop PERSON spans that are clearly non-person single tokens (e.g., Gewerbe)
+        # OR multi-token spans that start with sentence structure (pronouns + verbs)
         pruned = []
         for r in final:
             if r.entity_type == 'PERSON':
                 span = text[r.start:r.end].strip()
+                # Single token check
                 if re.fullmatch(r"[A-Za-zÄÖÜäöüßÀ-ÿ]+", span) and span.lower() in self.NON_PERSON_SINGLE_TOKENS:
                     continue
+                # Multi-token check: look for sentence-like structure (pronoun + verb + article + noun)
+                tokens = [t.lower() for t in span.split()]
+                if len(tokens) >= 2:
+                    # Check if starts with pronoun or modal verb
+                    sentence_starters = {
+                        "ich", "du", "er", "sie", "es", "wir", "ihr",  # Pronouns
+                        "möchte", "kann", "werde", "würde", "habe", "hab", "bin", "ist", "sind", "hat", "hätte",
+                        "für", "von", "zu", "bei", "mit", "ohne", "in",  # Prepositions/articles indicating sentence fragment
+                    }
+                    # Check first two tokens
+                    if any(t in sentence_starters for t in tokens[:2]):
+                        continue
             pruned.append(r)
         final = pruned
+
+        # Drop EMAIL / PHONE_NUMBER that appear as a separate labeled line immediately
+        # following an ADDRESS line to avoid 'bleed' where labels become attached.
+        preserved = []
+        addr_spans = [(r.start, r.end) for r in final if r.entity_type == "ADDRESS"]
+        for r in final:
+            if r.entity_type in ("EMAIL", "EMAIL_ADDRESS", "PHONE_NUMBER"):
+                # find the start of the current line
+                line_start = text.rfind("\n", 0, r.start)
+                if line_start != -1:
+                    # check the token left of the line for an ADDRESS that ends before this line
+                    if any(aend <= line_start for (astart, aend) in addr_spans):
+                        # If the line begins with an obvious label like 'email' or 'telefon', drop the contact entity
+                        label = text[line_start + 1:r.start].lower()
+                        if re.search(r"\b(email|e-mail|mail|telefon|telefon:|phone|telefonnummer|tel)\b", label):
+                            continue
+            preserved.append(r)
+        final = preserved
 
         # Filter out PERSON followed by a DATE via connecting prepositions (e.g., 'unter 01.01')
         def _filter_person_before_date_with_prep(text, items):
@@ -2714,6 +3214,30 @@ class PIIFilter:
             return out
         final = _filter_person_before_date_with_prep(text, final)
 
+        # Filter out PERSON results that are part of STUDENT_NUMBER patterns
+        def _filter_person_student_id(text, items):
+            # Find all STUDENT_NUMBER spans first
+            student_spans = []
+            for m in self.STUDENT_NUMBER_RX.finditer(text):
+                s, e = (m.start(1), m.end(1)) if m.lastindex else (m.start(), m.end())
+                student_spans.append((s, e))
+            
+            out = []
+            for r in items:
+                if r.entity_type != 'PERSON':
+                    out.append(r)
+                    continue
+                # Check if this PERSON span is fully contained within any STUDENT_NUMBER span
+                is_student_id = False
+                for s, e in student_spans:
+                    if s <= r.start and r.end <= e:
+                        is_student_id = True
+                        break
+                if not is_student_id:
+                    out.append(r)
+            return out
+        final = _filter_person_student_id(text, final)
+
         # Drop LOCATION when a label keyword is inline or adjacent
         final = self._filter_locations_with_inline_or_near_labels(text, final, window=28)
 
@@ -2733,6 +3257,7 @@ class PIIFilter:
 
         # Phone/date & meeting promotion
         final = self._demote_phone_over_date(text, final)
+        final = self._demote_phone_over_health_id(text, final)
         final = self._promote_meeting_over_phone(text, final, window=24)
 
         # Address span trimming
@@ -2755,9 +3280,9 @@ class PIIFilter:
         # Replacements: single-escaped HTML tokens
         operators = {
             "PERSON":           OperatorConfig("replace", {"new_value": "<PERSON>"}),
-            "EMAIL_ADDRESS":    OperatorConfig("replace", {"new_value": "<EMAIL>"}),
-            "PHONE_NUMBER":     OperatorConfig("replace", {"new_value": "<PHONE>"}),
-            "FAX_NUMBER":       OperatorConfig("replace", {"new_value": "<FAX>"}),
+            "EMAIL_ADDRESS":    OperatorConfig("replace", {"new_value": "<EMAIL_ADDRESS>"}),
+            "PHONE_NUMBER":     OperatorConfig("replace", {"new_value": "<PHONE_NUMBER>"}),
+            "FAX_NUMBER":       OperatorConfig("replace", {"new_value": "<FAX_NUMBER>"}),
             "ADDRESS":          OperatorConfig("replace", {"new_value": "<ADDRESS>"}),
             "LOCATION":         OperatorConfig("replace", {"new_value": "<LOCATION>"}),
             "DATE":             OperatorConfig("replace", {"new_value": "<DATE>"}),
@@ -2766,6 +3291,8 @@ class PIIFilter:
             "TAX_ID":           OperatorConfig("replace", {"new_value": "<TAX_ID>"}),
             "IP_ADDRESS":       OperatorConfig("replace", {"new_value": "<IP_ADDRESS>"}),
             "EORI":             OperatorConfig("replace", {"new_value": "<EORI>"}),
+            "COMMERCIAL_REGISTER": OperatorConfig("replace", {"new_value": "<COMMERCIAL_REGISTER>"}),
+            "CASE_REFERENCE":   OperatorConfig("replace", {"new_value": "<CASE_REFERENCE>"}),
 
             "CREDIT_CARD":      OperatorConfig("replace", {"new_value": "<CREDIT_CARD>"}),
             "BANK_ACCOUNT":     OperatorConfig("replace", {"new_value": "<BANK_ACCOUNT>"}),
@@ -2802,6 +3329,21 @@ class PIIFilter:
             "PLUS_CODE":        OperatorConfig("replace", {"new_value": "<PLUS_CODE>"}),
             "W3W":              OperatorConfig("replace", {"new_value": "<W3W>"}),
             "LICENSE_PLATE":    OperatorConfig("replace", {"new_value": "<LICENSE_PLATE>"}),
+
+            "BUND_ID":          OperatorConfig("replace", {"new_value": "<BUND_ID>"}),
+            "ELSTER_ID":        OperatorConfig("replace", {"new_value": "<ELSTER_ID>"}),
+            "SERVICEKONTO":     OperatorConfig("replace", {"new_value": "<SERVICEKONTO>"}),
+
+            "PASSWORD":         OperatorConfig("replace", {"new_value": "<PASSWORD>"}),
+            "PIN":              OperatorConfig("replace", {"new_value": "<PIN>"}),
+            "TAN":              OperatorConfig("replace", {"new_value": "<TAN>"}),
+            "PUK":              OperatorConfig("replace", {"new_value": "<PUK>"}),
+            "RECOVERY_CODE":    OperatorConfig("replace", {"new_value": "<RECOVERY_CODE>"}),
+
+            "FILE_NUMBER":      OperatorConfig("replace", {"new_value": "<FILE_NUMBER>"}),
+            "TRANSACTION_NUMBER": OperatorConfig("replace", {"new_value": "<TRANSACTION_NUMBER>"}),
+            "CUSTOMER_NUMBER":  OperatorConfig("replace", {"new_value": "<CUSTOMER_NUMBER>"}),
+            "TICKET_ID":        OperatorConfig("replace", {"new_value": "<TICKET_ID>"}),
 
             "API_KEY":          OperatorConfig("replace", {"new_value": "<API_KEY>"}),
             "SESSION_ID":       OperatorConfig("replace", {"new_value": "<SESSION_ID>"}),
