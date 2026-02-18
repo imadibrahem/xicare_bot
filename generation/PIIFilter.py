@@ -533,7 +533,7 @@ class PIIFilter:
             (r"\b(\d{8}[A-HJ-NP-TV-Z])\b", "es_dni"),
             (r"\b([XYZ]\d{7}[A-Z])\b", "es_nie"),
             (r"\b([A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z])\b", "it_codice_fiscale"),
-            (r"\b(?=[A-Z0-9]{9}\b)(?=.*[A-Z])[A-Z0-9]{9}\b", "de_personalausweis"),
+            (r"\b(?=[A-Z0-9]{9}\b)(?=.*[A-Z])(?=.*\d)[A-Z0-9]{9}\b", "de_personalausweis"),
             (r"\b(\d{9})\b", "nl_bsn"),
             (r"\b(\d{2}\.\d{2}\.\d{2}-\d{3}\.\d{2}|\d{6}-\d{3}\.\d{2}|\d{2}\.\d{2}\.\d{2}-\d{5}|\d{6}-\d{5})\b", "be_rn"),
             (r"\b([0-3]\d[01]\d\d{2}[- ]?\d{4})\b", "dk_cpr"),
@@ -1347,7 +1347,7 @@ class PIIFilter:
         )
         self.id_recognizer = PatternRecognizer(
             supported_entity="ID_NUMBER", supported_language="all",
-            patterns=[Pattern("de_personalausweis", r"\b(?=[A-Z0-9]{9}\b)(?=.*[A-Z])[A-Z0-9]{9}\b", 1.0),
+            patterns=[Pattern("de_personalausweis", r"\b(?=[A-Z0-9]{9}\b)(?=.*[A-Z])(?=.*\d)[A-Z0-9]{9}\b", 1.0),
                       Pattern("ssn", r"\b\d{3}-\d{2}-\d{4}\b", 1.0)],
         )
         self.ip_recognizer = PatternRecognizer(
@@ -1559,9 +1559,14 @@ class PIIFilter:
         if len(tokens) > 1:
             # Require at least one capitalized Latin token among tokens that start with a letter
             latin_tokens = [t for t in tokens if re.match(r"^[A-Za-zÀ-ÖØ-öø-ÿĀ-ſ]", t)]
+            
             # If there are Latin-script tokens, require at least one capitalized Latin token
+            #  skip capitalization rule when introduced by cue ---
             if latin_tokens and not any(t[0].isupper() for t in latin_tokens):
-                return False
+                left_ctx = text[max(0, start - 40):start].lower()
+                if not any(cue in left_ctx for cue in self.INTRO_CUES):
+                    return False
+            
 
             # Reject obvious sentence fragments that start with pronouns/auxiliary verbs
             non_person_words = {
@@ -1877,7 +1882,7 @@ class PIIFilter:
         # Collect spans
         addr_spans = [(r.start, r.end) for r in items if r.entity_type == "ADDRESS"]
         phone_spans = [(r.start, r.end) for r in items if r.entity_type in ("PHONE_NUMBER", "MEETING_ID")]
-
+        NON_LOCATION_WORDS = {"gibt", "gibt es", "gibts", "welche", "welcher", "welches"}
         def spans_near(a, b):
             return abs(a[0] - b[1]) <= window or abs(a[1] - b[0]) <= window
 
@@ -1896,11 +1901,15 @@ class PIIFilter:
                 out.append(r)
                 continue
 
+
             loc_span = (r.start, r.end)
             span_text = text[r.start:r.end]
 
             # Drop LOCATION that look like apartment numbers
             if re.match(r"^\w+ \d+$", span_text):
+                continue
+            
+            if span_text.lower() in NON_LOCATION_WORDS:
                 continue
 
             # Digit inside LOCATION span?
@@ -2398,6 +2407,10 @@ class PIIFilter:
         for m in self.STRICT_ADDRESS_RX.finditer(text):
             s, e = m.start(), m.end()
             span = m.group()
+
+            if re.match(r"(?i)\b(?:GEW|HRB|HRA|AZ|GZ|BZR)[-_]?\d", span):
+                continue
+
             # Do not let strict-address matches that overlap an email beat email matches
             if any(not (e <= a.start or s >= a.end) for a in add if a.entity_type in ("EMAIL", "EMAIL_ADDRESS")):
                 continue
@@ -2453,6 +2466,10 @@ class PIIFilter:
             for m in re.finditer(patt, text, flags=re.I | re.UNICODE):
                 s, e = m.start(), m.end()
                 matched = m.group()
+
+                if re.match(r"(?i)\b(?:GEW|HRB|HRA|AZ|GZ|BZR)[-_]?\d", span):
+                    continue
+
                 # Skip matches that are a tail after a digit (avoid partial matches like '-000 São Paulo')
                 if s > 0 and text[s-1].isdigit():
                     continue
@@ -2821,8 +2838,13 @@ class PIIFilter:
             s, e = m.start(), m.end()
             left = text[max(0, s - 24):s].lower()
             # Only boost passport score when explicit passport-like keywords are present
-            score = 1.05 if any(k in left for k in set(self.PASSPORT_KEYWORDS)) else 0.95
-            add.append(RecognizerResult("PASSPORT", s, e, score))
+
+            # strict guard – only accept if passport keyword is nearby
+            if any(k in left for k in self.PASSPORT_KEYWORDS):
+                add.append(RecognizerResult("PASSPORT", s, e, 1.05))
+            else:
+                continue  # reject unlabeled passport-like patterns
+
         for m in re.finditer(self.EU_PASSPORT_REGEX, text):
             s, e = m.start(), m.end()
             left = text[max(0, s - 24):s].lower()
