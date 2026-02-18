@@ -534,7 +534,7 @@ class PIIFilter:
             (r"\b([XYZ]\d{7}[A-Z])\b", "es_nie"),
             (r"\b([A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z])\b", "it_codice_fiscale"),
             (r"\b(?=[A-Z0-9]{9}\b)(?=.*[A-Z])(?=.*\d)[A-Z0-9]{9}\b", "de_personalausweis"),
-            (r"\b(\d{9})\b", "nl_bsn"),
+            #(r"\b(\d{9})\b", "nl_bsn"),
             (r"\b(\d{2}\.\d{2}\.\d{2}-\d{3}\.\d{2}|\d{6}-\d{3}\.\d{2}|\d{2}\.\d{2}\.\d{2}-\d{5}|\d{6}-\d{5})\b", "be_rn"),
             (r"\b([0-3]\d[01]\d\d{2}[- ]?\d{4})\b", "dk_cpr"),
             (r"\b((?:\d{6}|\d{8})[-+]\d{4})\b", "se_personnummer"),
@@ -694,13 +694,16 @@ class PIIFilter:
             r"\s*[:#]?\s*([A-Z0-9][A-Z0-9\-]{4,24})"
         )
         
+
         self.LABELED_TAX_VALUE_RX = re.compile(
-             r"(?i)\b(?:steuer[-\s]*id|steueridentifikationsnummer|tin|tax\s*id|tax\s*number|vat|ust-?id(?:nr\.?)?|ustid|vies|nif|siren|siret|piva|p\.?iva|afm|utr|cvr|oib|nip|regon|dic|cui|eik|bulstat)"
-                r"\s*[:#]?\s*("
-                 r"(?=[A-Z]{2}\s*[A-Z0-9][A-Z0-9\.\-\s]{1,24})(?=.*\d)[A-Z]{2}\s*[A-Z0-9][A-Z0-9\.\-\s]{1,24}"
-                 r"|(?=[A-Z0-9\-\s]{6,24})(?=.*\d)[A-Z0-9\-\s]{6,24}"
-                    r")"
+            r"(?i)\b(?:steuer[-\s]*id|steueridentifikationsnummer|tin|tax\s*id|tax\s*number|vat|"
+            r"ust-?id(?:nr\.?)?|ustid|vies|nif|siren|siret|piva|p\.?iva|afm|utr|cvr|oib|nip|regon|dic|cui|eik|bulstat)"
+            r"\s*[:#]?\s*("
+            r"(?=[A-Z]{2}[ \t]*[A-Z0-9][A-Z0-9.\- \t]{1,24})(?=.*\d)[A-Z]{2}[ \t]*[A-Z0-9][A-Z0-9.\- \t]{1,24}"
+            r"|(?=[A-Z0-9\- \t]{6,24})(?=.*\d)[A-Z0-9\- \t]{6,24}"
+            r")"
         )
+
 
 
         # US IDs: SSN/ITIN/EIN (label-led only)
@@ -1345,11 +1348,14 @@ class PIIFilter:
             patterns=[Pattern("us_passport", self.US_PASSPORT_REGEX, 1.02),
                       Pattern("eu_passport_generic", self.EU_PASSPORT_REGEX, 1.02)],
         )
+       
         self.id_recognizer = PatternRecognizer(
             supported_entity="ID_NUMBER", supported_language="all",
-            patterns=[Pattern("de_personalausweis", r"\b(?=[A-Z0-9]{9}\b)(?=.*[A-Z])(?=.*\d)[A-Z0-9]{9}\b", 1.0),
-                      Pattern("ssn", r"\b\d{3}-\d{2}-\d{4}\b", 1.0)],
+            patterns=[
+                Pattern("de_personalausweis", r"\b(?=[A-Z0-9]{9}\b)(?=.*[A-Z])(?=.*\d)[A-Z0-9]{9}\b", 1.0),
+                Pattern("ssn", r"\b\d{3}-\d{2}-\d{4}\b", 1.0)],
         )
+
         self.ip_recognizer = PatternRecognizer(
             supported_entity="IP_ADDRESS", supported_language="all",
             patterns=[Pattern("ipv4", self.IPV4_REGEX, 1.0),
@@ -2106,6 +2112,11 @@ class PIIFilter:
                 if m:
                     e = s + m.start()
             trimmed = span[:e - s].rstrip(" .,:;–—")
+
+            m_end = re.search(r"[.!?](?=\s+[A-ZÄÖÜ])", trimmed)
+            if m_end:
+                trimmed = trimmed[:m_end.end()]
+
             if trimmed:
                 # Additional filter: DROP addresses that don't contain house numbers or street types that require numbers
                 # E.g., "Tempelhof-Shöneberg" is just a district name, not a complete address
@@ -2467,7 +2478,7 @@ class PIIFilter:
                 s, e = m.start(), m.end()
                 matched = m.group()
 
-                if re.match(r"(?i)\b(?:GEW|HRB|HRA|AZ|GZ|BZR)[-_]?\d", span):
+                if re.match(r"(?i)\b(?:GEW|HRB|HRA|AZ|GZ|BZR)[-_]?\d", matched):
                     continue
 
                 # Skip matches that are a tail after a digit (avoid partial matches like '-000 São Paulo')
@@ -2477,6 +2488,10 @@ class PIIFilter:
                 alpha = re.match(r"\s*([A-Za-zÀ-ÖØ-öø-ÿ]+)", matched)
                 if alpha and alpha.group(1).islower():
                     continue
+
+                if any(not (e <= a.start or s >= a.end) for a in add if a.entity_type in ("EMAIL","EMAIL_ADDRESS")):
+                    continue
+
                 add.append(RecognizerResult("LOCATION", s, e, 0.92))
         # Phones or Meeting IDs
         for m in self.PHONE_RX.finditer(text):
@@ -2681,7 +2696,14 @@ class PIIFilter:
                 is_labeled = any(k in left for k in self.ID_KEYWORDS)
                 score = 1.03 if is_labeled else 0.92
                 # Map specific ID formats to more precise entities when known (e.g., German Personalausweis -> PASSPORT)
-                ent_type = "PASSPORT" if "personalausweis" in _name.lower() else "ID_NUMBER"
+               
+                val = text[s:e]
+                if "personalausweis" in _name.lower():
+                    # Must contain at least one digit (blocks "Abschluss")
+                    ent_type = "PASSPORT" if re.search(r"\d", val) else "ID_NUMBER"
+                else:
+                    ent_type = "ID_NUMBER"
+
                 add.append(RecognizerResult(ent_type, s, e, score))
 
         # TAX strict - boost labeled priority
