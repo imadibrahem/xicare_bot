@@ -123,9 +123,13 @@ class PIIFilter:
         "FILE_NUMBER", "TRANSACTION_NUMBER", "CUSTOMER_NUMBER", "TICKET_ID",
     ]
 
-    def __init__(self, person_false_positive_samples=None):
+    def __init__(self, person_false_positive_samples=None, non_name_after_ich_bin=None):
         if person_false_positive_samples is None:
             person_false_positive_samples = []
+        
+        if non_name_after_ich_bin is None:
+            non_name_after_ich_bin = []
+
         self.person_deny_list = person_false_positive_samples
         self.language = 'en'
         warnings.filterwarnings("ignore")
@@ -136,6 +140,25 @@ class PIIFilter:
         self.STRICT_LOCATION_POSTAL_ONLY = True
         self._build_patterns()
         self._setup_analyzer()
+        # --- German-specific "not-a-name" tokens after "ich bin"
+        self.DE_NON_NAME_AFTER_ICH_BIN = {
+            "beschäftigt","arbeitslos","krank","gesund","müde","wach","allein","verheiratet",
+            "ledig","getrennt","geschieden","verwitwet","selbstständig","selbststaendig",
+            "angestellt","frei","verfügbar","verfuegbar","bereit","heute","gestern","morgen",
+            "hier","da","dran","unterwegs","anwesend","abwesend","neu","alt","jung","schon",
+            "sehr","einfach","immer","gerade","kurz","gleich","bald",
+            "elektriker","student","studentin","schüler","schueler","schülerin","schuelerin",
+            "fahrer","koch","köchin","koechin","bäcker","baecker","verkäufer","verkaeufer",
+            "berater","entwickler","programmierer","mechaniker","arzt","ärztin","aerztin",
+            "anwalt","anwältin","anwaeltin","lehrer","lehrerin","pfleger","pflegerin",
+            "friseur","friseurin","handwerker","gastronom","gastronomin",
+        }
+        # normalize and merge runtime-provided words
+        self.DE_NON_NAME_AFTER_ICH_BIN.update([w.strip().lower() for w in non_name_after_ich_bin if w and w.strip()])
+        # also merge external deny list for consistency
+        for _w in self.person_deny_list:
+            if isinstance(_w, str) and _w.strip():
+                self.DE_NON_NAME_AFTER_ICH_BIN.add(_w.strip().lower())
 
     # ===========================
     # Build all regex components
@@ -364,7 +387,7 @@ class PIIFilter:
         self.PATTERN_ANY_COMPOUND_SUFFIX = rf"""
         \b
         [A-ZÀ-ÖØ-ÝÄÖÜ][\wÀ-ÖØ-öø-ÿÄÖÜäöüß'’-]*?(?:{self.STREET_SUFFIX_COMPOUND})
-        \s*
+        [\s\.,]*
         \d{{0,5}}[A-Za-z]?
         (?:\s*[-–]\s*\d+[A-Za-z]?)?
         {self.PAREN_DISTRICT}
@@ -424,7 +447,7 @@ class PIIFilter:
         # Conservative fallback: street name + suffix + house number (captures variants missed by STRICT_ADDRESS)
         # Accept either the compact suffix list or the broader street type list (cover English 'Street', 'Avenue', etc.)
         self.FALLBACK_STREET_RX = re.compile(
-            r"\b[A-ZÀ-ÖØ-ÝÄÖÜ][\wÀ-ÖØ-öø-ÿÄÖÜäöüß'’\.-]*(?:\s+(?:" + self.STREET_SUFFIX_COMPOUND + r"|" + self.STREET_TYPES + r"))\s*\d{1,4}[A-Za-z]?(?:\s*[-–]\s*\d+[A-Za-z]?)?\b",
+            r"\b[A-ZÀ-ÖØ-ÝÄÖÜ][\wÀ-ÖØ-öø-ÿÄÖÜäöüß'’\.-]*(?:\s+(?:" + self.STREET_SUFFIX_COMPOUND + r"|" + self.STREET_TYPES + r"))[\s\.,]*\d{1,4}[A-Za-z]?(?:\s*[-–]\s*\d+[A-Za-z]?)?\b",
             re.I | re.UNICODE
         )
         # POSTAL codes + City
@@ -918,6 +941,7 @@ class PIIFilter:
 
         # PERSON negative lexicon / single-token blockers (extended)
         self.NON_PERSON_SINGLE_TOKENS = {
+            "beschäftigt","einfach","heute","schon","sehr","bereit","müde","krank","gesund","frei",
             "meine","mein","meiner"," ist","und","y","mi","il","la","el","le","les","de","des","del","da",
             "sono","soy","ich","bin","am","i","je","j'","j’","yo","tu","vos","vous","nous","vous",
             "abito","vivo","habito","wohne","adresse","liegt","indirizzo","dirección","direccion","direccio",
@@ -1035,7 +1059,7 @@ class PIIFilter:
 
         # Simple substring cues used for quick prefix checks (lowercased)
         self.INTRO_CUES = [
-        "my name is", "je m", "mein name", "ich hei", "ich bin", "me llamo", "mi chiamo",
+        "my name is", "je m", "mein name", "ich hei", "me llamo", "mi chiamo",
         "i am called",
         "meu nome", "chamo-me", "ik heet", "mijn naam", "jag heter", "jeg heter", "jeg hedder",
         "minun nimeni", "nimeni on", "ég heiti", "nazywam", "jmenuji se", "volám sa", "volam sa",
@@ -1496,12 +1520,34 @@ class PIIFilter:
             return False
 
         tokens = [t for t in re.split(r"\s+", s) if t]
-        low = [t.lower() for t in tokens]
+        low = [re.sub(r"^\W+|\W+$", "", t.lower()) for t in tokens]
         # If an intro cue precedes this span, prefer PERSON even if the first token looks like a street word
+
+
         if self._has_intro_prefix(text, start):
-            # Ensure last token is not a street blocker (reject 'Anna Gasse') and at least one token looks like a name
-            if tokens and tokens[-1].lower() not in self.STREET_BLOCKERS and any(re.match(r"^[A-Za-zÀ-ÖØ-öø-ÿĀ-ſ]", t) and t.lower() not in self.NON_PERSON_SINGLE_TOKENS for t in tokens):
-                return True
+            # do not accept if tokens contain identity/tax/passport labels
+            label_guard = ({kw.lower() for kw in self.ID_KEYWORDS}
+                        | {kw.lower() for kw in self.TAX_KEYWORDS}
+                        | {kw.lower() for kw in self.PASSPORT_KEYWORDS}
+                        | {"nummer", "nummern", "ausweisnummer", "personalausweisnummer"})
+            if any(tok in self.PERSON_BLACKLIST_WORDS or tok in label_guard for tok in low):
+                pass  # fall through to normal checks (reject below)
+            else:
+                # accept only if intro is very close and same sentence (no prior .?!)
+                left_ctx = text[max(0, start - 40):start]
+                if any(cue in left_ctx.lower() for cue in self.INTRO_CUES):
+                    punct_break = re.search(r"[\.!?]", left_ctx)
+                    if not punct_break or punct_break.end() < len(left_ctx) - 20:
+                        if tokens and low[-1] not in self.STREET_BLOCKERS \
+                        and any(re.match(r"^[A-Za-zÀ-ÖØ-öø-ÿĀ-ſ]", t) and re.match(r"^[A-ZÀ-ÖØ-ÝÄÖÜ]", t) for t in tokens):
+                            return True        
+        
+
+        if re.search(r"(?i)\bich\s+bin\s*$", text[max(0, start - 12):start]):
+            right = text[start:min(len(text), start + 20)].lower()
+            if re.match(r"(und|habe|hab|heute|sehr|einfach|beschäftigt|gemacht)\b", right):
+                return False
+
         if "gasse" in low or "koordinaten" in low:
             return False
         if any(tok in self.PERSON_BLACKLIST_WORDS for tok in low):
@@ -1549,6 +1595,17 @@ class PIIFilter:
 
         # Single-token names: be conservative — accept only when preceded by an intro cue or a title
         if len(tokens) == 1:
+            # Special case: accept lowercase name-like tokens after "ich bin" if clause boundary follows
+            ich_bin_left = re.search(r"(?i)\bich\s+bin\s*$", text[max(0, start - 12):start])
+            if ich_bin_left:
+                tok = tokens[0]
+                right = text[start:min(len(text), start + 24)]
+                end_ok = bool(re.match(r"\s*(?:[\.,;:!?]\s*|$)", right))
+                if end_ok and self._looks_like_name_token(tok):
+                    return True
+                # If it's not name-like (or followed by more sentence), it's NOT a person
+                return False
+
             # Accept if clearly introduced ("my name is Anna")
             if self._has_intro_prefix(text, start):
                 return True
@@ -1635,6 +1692,26 @@ class PIIFilter:
         """Heuristic: is there an intro cue immediately before this span?"""
         prefix = text[max(0, start - window):start].lower()
         return any(cue in prefix for cue in self.INTRO_CUES)
+    
+    def _looks_like_name_token(self, token: str) -> bool:
+            """
+            Single-token name-likeness check used for the special 'ich bin <token>' case.
+            """
+            if not token:
+                return False
+            t = token.strip()
+            if not re.fullmatch(r"[A-Za-zÀ-ÖØ-öø-ÿĀ-ſ][A-Za-zÀ-ÖØ-öø-ÿĀ-ſ'’-]*", t):
+                return False
+            if len(t) < 2:
+                return False
+            low = t.lower()
+            if low in self.STREET_BLOCKERS \
+            or low in self.NON_PERSON_SINGLE_TOKENS \
+            or low in self.PERSON_BLACKLIST_WORDS \
+            or low in getattr(self, 'DE_NON_NAME_AFTER_ICH_BIN', set()):
+                return False
+            return True
+    
 
     def _effective_priority(self, text: str, r) -> int:
         """Bump PERSON priority above ADDRESS if preceded by an intro cue."""
@@ -1859,6 +1936,14 @@ class PIIFilter:
             # Drop short LOCATIONs that look like apartment/unit numbers
             if re.match(r"^\w+ \d+$", span_text):
                 continue
+
+            if span_text and span_text[0].islower():
+                continue
+
+
+            if re.match(r"(?i)^(gibt|ist|sind|war|waren|kann|können|moechte|möchte|will|wird|werden|habe|hat|wie|wo|wer|was|wann)\\b", span_text):
+                continue
+
 
             # ❗ DROP standalone LOCATION
             continue
@@ -2193,7 +2278,7 @@ class PIIFilter:
 
         # Emails — inject early so other matches can't replace parts of addresses/domains
         for m in self.EMAIL_RX.finditer(text):
-            add.append(RecognizerResult("EMAIL", m.start(), m.end(), 1.0))
+            add.append(RecognizerResult("EMAIL_ADDRESS", m.start(), m.end(), 1.0))
 
         # ============================================================
         # EARLY API KEY DETECTION — PROVIDER KEYS + api_key=
@@ -3002,7 +3087,7 @@ class PIIFilter:
                 between = text[cur.end:nxt.start]
                 if (cur.entity_type == "ADDRESS" and nxt.entity_type == "LOCATION") or \
                    (cur.entity_type == "LOCATION" and nxt.entity_type == "ADDRESS"):
-                    if re.fullmatch(r"(?:\s*(?:,|؛|،|;)?\s*|\s*[-–—]?\s*|\n)", between):
+                    if re.fullmatch(r"(?:[ \t]*(?:,|؛|،|;)?[ \t]*|[ \t]*[-–—]?[ \t]*)", between):
                         s = min(cur.start, nxt.start)
                         e = max(cur.end, nxt.end)
                         merged.append(RecognizerResult("ADDRESS", s, e, max(cur.score, nxt.score)))
@@ -3029,6 +3114,17 @@ class PIIFilter:
             merged.append(cur)
             i += 1
         return self._resolve_overlaps(text, merged)
+    
+
+    def add_non_name_tokens_after_ich_bin(self, tokens):
+        """
+        Extend the 'not-a-name' list for the 'ich bin <token>' rule at runtime.
+        """
+        if not tokens:
+            return
+        for w in tokens:
+            if isinstance(w, str) and w.strip():
+                self.DE_NON_NAME_AFTER_ICH_BIN.add(w.strip().lower())
 
     # ====================
     # Public API
