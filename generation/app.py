@@ -21,7 +21,7 @@ from slowapi import _rate_limit_exceeded_handler
 import time
 
 from generators.vertexai import VertexAIRAG
-
+from PIIFilter import PIIFilter
 # Load environment variables from .env file
 config = load_dotenv()
 
@@ -130,6 +130,7 @@ def gen_config(
     }
 
 GUI = APIRouter(prefix="/generation")
+pii_filter_instance = PIIFilter()
 
 # before /generation/generate but now already routed GUI to / generation
 @GUI.post("/generate")
@@ -148,6 +149,8 @@ async def generate(data: GenerateRequestGUI, request: Request, origin: str = Dep
                         
     # Use token directly without refreshing
     auth_header = {"Authorization": f"Bearer {token}"}
+    
+    clean_text = pii_filter_instance.anonymize_text(text=data.message)
 
     async with httpx.AsyncClient(timeout=5.0) as client:
         # Save user's message to PocketBase
@@ -155,7 +158,8 @@ async def generate(data: GenerateRequestGUI, request: Request, origin: str = Dep
             f"{os.environ.get('GENERATION_PB_URL')}/api/collections/messages/records",
             json={
                 "conversation": data.conversationId,
-                "text": data.message,
+                "text": clean_text,
+                "original_text": data.message,
                 "role": "user",
                 "rating": 0,
             },
