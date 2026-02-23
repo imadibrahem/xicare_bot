@@ -489,6 +489,148 @@ def plot_traffic_heatmap(api_2d_without_errors: pd.DataFrame, outpath, generatio
     plt.tight_layout()
     plt.savefig(outpath, dpi=150)
     plt.close(fig)
+
+# 8) Weekly aggregations: Comparison of Conversations & Calls (Grouped Bar Chart)
+def plot_weekly_conversations_and_calls(api_2d: pd.DataFrame, outpath: Path):
+    df = api_2d.copy()
+    if df.empty or "created" not in df.columns:
+        return
+
+    # Ensure valid datetime
+    df["created"] = pd.to_datetime(df["created"], utc=True, errors="coerce")
+    df = df.dropna(subset=["created"])
+
+    if df.empty:
+        return
+
+    # Aggregate by week (W-MON start)
+    # count calls (rows) and unique conversations
+    # Use closed='left', label='left' so that Monday 00:00 starts the new week
+    if "conversationId" in df.columns:
+        total_calls = df.set_index("created").resample("W-MON", closed="left", label="left").size()
+        unique_convs = df.set_index("created").resample("W-MON", closed="left", label="left")["conversationId"].nunique()
+        weekly = pd.DataFrame({"calls": total_calls, "conversations": unique_convs})
+    else:
+        # Fallback
+        weekly = df.set_index("created").resample("W-MON", closed="left", label="left").size().to_frame("calls")
+        weekly["conversations"] = 0
+
+    # Fill NaN with 0
+    weekly = weekly.fillna(0)
+    
+    if weekly.empty:
+        return
+
+    # Setup plot with single y-axis
+    fig, ax1 = plt.subplots(figsize=(8, 5))
+    
+    x = np.arange(len(weekly))
+    width = 0.35
+    
+    # Format x-labels (e.g. "2023-10-02")
+    labels = [ts.strftime('%d.%m.%Y') for ts in weekly.index]
+    
+    # Plot bars
+    rects1 = ax1.bar(x - width/2, weekly["calls"], width, label="API Calls (gesamt)", color="tab:blue", alpha=0.7)
+    rects2 = ax1.bar(x + width/2, weekly["conversations"], width, label="API Conversations (unique)", color="tab:orange", alpha=0.7)
+    
+    # Add labels on top of bars
+    ax1.bar_label(rects1, padding=3, fmt='%d', fontsize=9)
+    ax1.bar_label(rects2, padding=3, fmt='%d', fontsize=9)
+    
+    # Axis labels
+    ax1.set_xlabel("Woche (Startdatum)")
+    ax1.set_ylabel("Anzahl")
+    
+    # X-Axis ticks
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(labels, rotation=45, ha="right")
+    
+    # Title
+    ax1.set_title("Wöchentliche API Calls & Conversations")
+    
+    # Legend
+    ax1.legend(loc="upper right")
+    
+    plt.tight_layout()
+
+    plt.savefig(outpath, dpi=150)
+    plt.close(fig)
+
+# 9) Weekly aggregations: Latency Stats (Line Chart)
+def plot_weekly_latency_stats(api_2d: pd.DataFrame, outpath: Path):
+    df = api_2d.copy()
+    if df.empty or "created" not in df.columns or "duration_ms" not in df.columns:
+        return
+
+    # Ensure valid datetime and numeric duration
+    df["created"] = pd.to_datetime(df["created"], utc=True, errors="coerce")
+    df["duration_ms"] = _num(df["duration_ms"])
+    
+    # Filter valid rows (optionally filter /generation only? Usually yes for latency)
+    # The user didn't specify, but latency is usually meaningful for generation.
+    # However, passed DF might be already filtered or not. 
+    # analyze_api_events passes api_2d which is filtered to /v1/generation/imperia in current code logic.
+    # So we can assume it's the right data.
+    
+    df = df.dropna(subset=["created", "duration_ms"])
+
+    # Convert to seconds
+    df["duration_s"] = df["duration_ms"] / 1000.0
+
+    if df.empty:
+        return
+
+    # Aggregate by week (W-MON start)
+    group = df.set_index("created").resample("W-MON", closed="left", label="left")["duration_s"]
+    
+    weekly_stats = pd.DataFrame({
+        "mean_s": group.mean(),
+        "p50_s": group.median(),
+        "p95_s": group.apply(lambda x: np.percentile(x, 95) if len(x) > 0 else np.nan),
+        "p99_s": group.apply(lambda x: np.percentile(x, 99) if len(x) > 0 else np.nan)
+    })
+
+    # Drop rows with no data
+    weekly_stats = weekly_stats.dropna(how="all")
+    
+    if weekly_stats.empty:
+        return
+
+    # Setup plot
+    fig, ax1 = plt.subplots(figsize=(10, 6))
+    
+    x = weekly_stats.index
+    # Labels for x-axis
+    labels = [ts.strftime('%d.%m.%Y') for ts in x]
+    
+    # Plot lines
+    ax1.plot(x, weekly_stats["mean_s"], label="Mean (s)", marker="o", linewidth=2)
+    ax1.plot(x, weekly_stats["p50_s"], label="p50 (s)", marker="o", linewidth=2)
+    ax1.plot(x, weekly_stats["p95_s"], label="p95 (s)", marker="o", linewidth=2)
+    ax1.plot(x, weekly_stats["p99_s"], label="p99 (s)", marker="o", linewidth=2)
+    
+    # Axis labels
+    ax1.set_xlabel("Woche (Startdatum)")
+    ax1.set_ylabel("Latenz (s)")
+    
+    # X-Axis ticks
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(labels, rotation=45, ha="right")
+    
+    # Title
+    ax1.set_title("Wöchentliche Latenz-Statistiken")
+    
+    # Grid
+    ax1.grid(True, alpha=0.3)
+    
+    # Legend
+    ax1.legend(loc="upper left")
+    
+    plt.tight_layout()
+
+    plt.savefig(outpath, dpi=150)
+    plt.close(fig)
     
 def analyze_api_events(path_api: str, start: pd.Timestamp, end: pd.Timestamp, bucket: str = "1d", outdir: Path = Path("analysis_plots_api_only")):
     print("Start analyze_api_events()")
@@ -514,9 +656,17 @@ def analyze_api_events(path_api: str, start: pd.Timestamp, end: pd.Timestamp, bu
     step_tbl = latency_by_step_table(api_2d_without_errors, max_step=30, generation_only=True)
     plot_latency_by_step(step_tbl, outdir/f"latency_by_step_{start.strftime('%Y-%m-%d')}_{end.strftime('%Y-%m-%d')}.png", show="mean", add_p95=True, min_n=10)
     plot_traffic_heatmap(api_2d_without_errors, outpath=outdir/f"traffic_heatmap_{start.strftime('%Y-%m-%d')}_{end.strftime('%Y-%m-%d')}.png", generation_only=False)
+    
+    # New weekly plot
+    plot_weekly_conversations_and_calls(api_2d, outpath=outdir / f"weekly_conversations_calls_{start.strftime('%Y-%m-%d')}_{end.strftime('%Y-%m-%d')}.png")
+    
+    # New weekly latency stats plot
+    plot_weekly_latency_stats(api_2d_without_errors, outpath=outdir / f"weekly_latency_stats_{start.strftime('%Y-%m-%d')}_{end.strftime('%Y-%m-%d')}.png")
 
     print("PNG exports written to:", outdir.resolve())
+
     print("End analyze_api_events()")
+
     return outdir
     
 # =========================
