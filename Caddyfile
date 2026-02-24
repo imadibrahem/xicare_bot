@@ -1,7 +1,7 @@
 {
 	# only errors no access logs
 	log {
-		level ERROR
+		level INFO
 		output stderr
 	}
 }
@@ -17,18 +17,23 @@
 	# pocketbase
 	handle /_/* {
 		reverse_proxy pocketbase:8080 {
+			flush_interval 1s
 			transport http {
-				read_timeout 5s
-				response_header_timeout 5s
+				dial_timeout 10s
+				read_timeout 600s
+				response_header_timeout 600s
 			}
 		}
 	}
 
 	handle /api/* {
 		reverse_proxy pocketbase:8080 {
+			flush_interval 1s
 			transport http {
-				read_timeout 5s
-				response_header_timeout 5s
+				
+				dial_timeout 10s
+            			read_timeout  600s
+            			response_header_timeout 600s
 			}
 		}
 	}

@@ -21,6 +21,12 @@ services:
     build: ./generation
     command: ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "error", "--no-access-log"]
     env_file: .env
+
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /app/generation/sqlxpert-b13d7790a7db.json
+      PROJECT_ID: sqlxpert
+      LOCATION: europe-west4
+
     restart: unless-stopped
     depends_on: 
       - redis

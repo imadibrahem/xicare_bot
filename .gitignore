@@ -181,6 +181,10 @@ pocketbase/pocketbase
 pb_data
 pb_migrations
 
+# Google service account credentials
+/app/generation/sqlxpert-b13d7790a7db.json
+
+
 export*
 
 *zip
