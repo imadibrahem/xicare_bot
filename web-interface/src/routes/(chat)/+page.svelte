@@ -63,13 +63,14 @@
 				<div class="max-w-2xl text-center [&_p:not(:first-child)]:mt-4">
 					<p class="[&:not(:first-child)]:mt-6">
 						<strong>
-							DIWI – Ihr digitaler Assistent beim Einheitlichen Ansprechpartner Berlin.
+							DINO – Ihr digitaler Hausnotruf-Assistent.
 						</strong>
 						<br />
-						Ich unterstütze Sie dabei, schnell und unkompliziert den passenden Online-Dienst für Ihr
-						Anliegen in Berlin zu finden – ob als Privatperson, Unternehmen oder Organisation.
+						Ich unterstütze Sie dabei, schnell und verständlich Antworten rund um das Thema Hausnotruf zu finden – ob als Angehörige, Interessentin oder Interessent oder als Organisation.
+						Egal ob es um Kosten, Pflegekassenzuschüsse, Technik, Notfallszenarien, Schlüsselregelungen, Umzug, Reichweite oder Zusatzgeräte geht – DINO hilft strukturiert und rund um die Uhr weiter.
+						Zum Schutz Ihrer Privatsphäre speichere ich keine personenbezogenen Daten.
 						<br />
-						Obwohl wir keine Daten speichern, bitten wir Sie, keine sensiblen Daten einzugeben.
+						Bitte geben Sie dennoch keine sensiblen Informationen ein.
 						<br />
 						Schön, dass Sie da sind!
 					</p>

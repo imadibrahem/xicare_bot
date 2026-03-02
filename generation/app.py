@@ -150,7 +150,8 @@ async def generate(data: GenerateRequestGUI, request: Request, origin: str = Dep
     # Use token directly without refreshing
     auth_header = {"Authorization": f"Bearer {token}"}
     
-    clean_text = pii_filter_instance.anonymize_text(text=data.message)
+    #clean_text = pii_filter_instance.anonymize_text(text=data.message)
+    clean_text = data.message
 
     async with httpx.AsyncClient(timeout=5.0) as client:
         # Save user's message to PocketBase
