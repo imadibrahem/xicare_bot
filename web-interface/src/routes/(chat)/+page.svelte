@@ -63,12 +63,10 @@
 				<div class="max-w-2xl text-center [&_p:not(:first-child)]:mt-4">
 					<p class="[&:not(:first-child)]:mt-6">
 						<strong>
-							DINO – Ihr digitaler Hausnotruf-Assistent.
+						 –placeholder-(change on the server)
 						</strong>
 						<br />
-						Ich unterstütze Sie dabei, schnell und verständlich Antworten rund um das Thema Hausnotruf zu finden – ob als Angehörige, Interessentin oder Interessent oder als Organisation.
-						Egal ob es um Kosten, Pflegekassenzuschüsse, Technik, Notfallszenarien, Schlüsselregelungen, Umzug, Reichweite oder Zusatzgeräte geht – DINO hilft strukturiert und rund um die Uhr weiter.
-						Zum Schutz Ihrer Privatsphäre speichere ich keine personenbezogenen Daten.
+						-placeholder-(change on the server)
 						<br />
 						Bitte geben Sie dennoch keine sensiblen Informationen ein.
 						<br />

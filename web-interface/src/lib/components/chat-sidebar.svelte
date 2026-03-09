@@ -61,7 +61,7 @@
 	<Sidebar.Header>
 		<div class="flex flex-col items-start gap-4 p-2">
 			<enhanced:img
-				src="$lib/img/EAP_Logo_4c_de_berlin.png"
+				src="$lib/img/Sidebar_Header.png"
 				class="w-10/12"
 				alt="Logo Einheitlicher Ansprechpartner (EA) Berlin"
 			/>
@@ -124,7 +124,7 @@
 			</Sidebar.MenuItem>
 		</Sidebar.Menu>
 		<div class="flex justify-between gap-4 p-2">
-			<enhanced:img src="$lib/img/B_Logo_M_PW_4C.png" class="w-1/2" alt="Logo Land Berlin" />
+			<enhanced:img src="$lib/img/Sidebar_Bottom.png" class="w-1/2" alt="Logo Land Berlin" />
 			<LightSwitch />
 		</div>
 	</Sidebar.Footer>

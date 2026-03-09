@@ -1,12 +1,8 @@
-#!/bin/bash
-# Activate the virtual environment
-# not needed
-# source ~/berlin-chat-dev-interface/venv/bin/activate
+#!/usr/bin/env bash
+set -euo pipefail
 
-# cd to repo root
-cd ~/berlin-chat-dev-interface
+# Always run from the directory where the script lives (repo root)
+cd "$(dirname "$0")"
 
-# Run the Python script
-python3 ~/berlin-chat-dev-interface/create_germany_ips.py
-
-# reloading caddy is within .py and not here so that it does not get reloaded unnecessarily
+# Run the generator
+python3 ./create_germany_ips.py

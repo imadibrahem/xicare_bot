@@ -41,17 +41,20 @@
 	# ----------------------------
 	# API: restrict by Germany IPs
 	# ----------------------------
-	@gen_api {
-		path /v1/generation/*
-		import /etc/caddy/germany_ips.caddy
+	# Map health only → upstream /health
+	handle /generation/health {
+	    uri replace /generation/health /health
+	    reverse_proxy generation:8000
 	}
-	handle @gen_api {
-		reverse_proxy generation:8000 {
-			transport http {
-				read_timeout 50s
-				response_header_timeout 50s
-			}
-		}
+
+	# All other GUI calls pass through unchanged (no strip)
+	handle /generation/* {
+	    reverse_proxy generation:8000 {
+	        transport http {
+	            read_timeout 50s
+	            response_header_timeout 50s
+	        }
+	    }
 	}
 	handle /v1/generation/* {
 		respond "Forbidden" 403
@@ -73,16 +76,17 @@
 		respond "Forbidden" 403
 	}
 
-	# GUI generation
-	handle /generation/* {
-		reverse_proxy generation:8000 {
-			transport http {
-				read_timeout 50s
-				response_header_timeout 50s
-			}
-		}
+	# GUI generation (strip /generation so /generation/* -> /* upstream)
+	@gui_gen path /generation/*
+	handle @gui_gen {
+	    uri strip_prefix /generation
+	    reverse_proxy generation:8000 {
+	        transport http {
+	            read_timeout 50s
+	            response_header_timeout 50s
+	        }
+	    }
 	}
-
 	handle {
 		root * /app/web-interface/build
 		try_files {path} /index.html

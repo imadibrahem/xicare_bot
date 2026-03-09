@@ -181,6 +181,8 @@ pocketbase/pocketbase
 pb_data
 pb_migrations
 
+web-interface/src/lib/img/*.png
+
 # Google service account credentials
 /app/generation/sqlxpert-b13d7790a7db.json
 

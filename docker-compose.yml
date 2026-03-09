@@ -6,6 +6,8 @@ services:
     volumes:
       - ./pocketbase/pb_migrations:/app/pb/pb_migrations
       - ./pocketbase/pb_data:/app/pb/pb_data
+    networks: [appnet]
+
   web-interface:
     image: node:22-alpine
     working_dir: /app/web-interface
@@ -13,10 +15,14 @@ services:
     command: ["sh", "-c", "npm install && npm run build"]
     volumes:
       - ./web-interface:/app/web-interface
+    networks: [appnet]
+
   redis:
     image: redis:7.4-alpine
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     restart: unless-stopped
+    networks: [appnet]
+
   generation:
     build: ./generation
     command: ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "error", "--no-access-log"]
@@ -28,10 +34,20 @@ services:
       LOCATION: europe-west4
 
     restart: unless-stopped
-    depends_on: 
+    depends_on:
       - redis
     volumes:
       - ./generation:/app/generation
+
+    # Optional: show "healthy" when /health is OK; requires curl in the image
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+    networks: [appnet]
+
   caddy:
     image: caddy:2-alpine
     env_file: .env
@@ -46,7 +62,15 @@ services:
       - caddy_data:/data
       - caddy_config:/config
       - ./germany_ips.caddy:/etc/caddy/germany_ips.caddy
+    depends_on:
+      - pocketbase
+      - generation
+    networks: [appnet]
 
 volumes:
   caddy_data:
   caddy_config:
+
+networks:
+  appnet:
+    driver: bridge

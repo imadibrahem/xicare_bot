@@ -25,6 +25,8 @@ from PIIFilter import PIIFilter
 # Load environment variables from .env file
 config = load_dotenv()
 
+# Create the FastAPI app
+app = FastAPI()
 
 # Get RAG model
 generator = VertexAIRAG(
@@ -32,8 +34,26 @@ generator = VertexAIRAG(
     location=os.environ.get("LOCATION"),
 )
 
-# Initializing FastAPI
-app = FastAPI()
+# --- Health & readiness endpoints ---
+@app.get("/health", include_in_schema=False)
+def health():
+    return {"status": "ok"}
+
+
+@app.get("/ready", include_in_schema=False)
+async def ready():
+    # ping redis
+    pong = await r.ping()
+    if not pong:
+        raise HTTPException(status_code=503, detail="redis unavailable")
+    # shallow PB check
+    async with httpx.AsyncClient(timeout=2.0) as client:
+        resp = await client.get(f"{GENERATION_PB_URL}/api/health")
+        if resp.status_code != 200:
+            raise HTTPException(status_code=503, detail="pocketbase unavailable")
+    return {"status": "ready"}
+
+
 
 ORIGIN_WHITELIST = {o.strip() for o in os.getenv("ORIGIN_WHITELIST", "").split(",") if o.strip()}
 LIMIT_PER_IP_PER_10_SECS       = os.getenv("LIMIT_PER_IP_PER_10_SECS", "10/10 second")
