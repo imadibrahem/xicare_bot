@@ -29,7 +29,6 @@ services:
     env_file: .env
 
     environment:
-      GOOGLE_APPLICATION_CREDENTIALS: /app/generation/sqlxpert-b13d7790a7db.json
       PROJECT_ID: sqlxpert
       LOCATION: europe-west4
 
