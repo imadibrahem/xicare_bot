@@ -2,6 +2,12 @@ from typing import Awaitable, AsyncIterator
 from google import genai
 from google.genai import types
 from google.genai.types import HttpOptions, HarmBlockThreshold
+from google.cloud import aiplatform_v1
+from google.api_core.client_options import ClientOptions
+from google.cloud import storage
+import vertexai
+import json
+import os
 
 harm_thresholds = [
     "BLOCK_NONE",
@@ -17,13 +23,97 @@ class VertexAIRAG:
         project: str,
         location: str,
     ):
-        # Initialize client
+        # Initialize genai client
         self._client = genai.Client(
             vertexai=True,
             project=project,
             location=location,
             http_options=HttpOptions(api_version="v1"),
         )
+        
+        # Initialize Vector Search and GCS clients
+        self._project = project
+        self._location = location
+        vertexai.init(project=project, location=location)
+        self._match_client = aiplatform_v1.MatchServiceClient(
+            client_options=ClientOptions(api_endpoint=f"{location}-aiplatform.googleapis.com")
+        )
+        self._storage_client = storage.Client(project=project)
+        self._gcs_bucket = os.getenv("GCS_BUCKET")
+
+    def _retrieve_vector_search_context(self, query: str, index_endpoint: str, top_k: int = 20) -> str:
+        """Retrieve relevant documents from Vector Search and return as context."""
+        try:
+            # Embed the query
+            from vertexai.language_models import TextEmbeddingModel
+            embedding_model = TextEmbeddingModel.from_pretrained("text-multilingual-embedding-002")
+            query_embedding = embedding_model.get_embeddings([query])[0].values
+            
+            # Assume index_endpoint is the IndexEndpoint resource name
+            # Extract deployed_index_id from the endpoint name or assume default
+            if "/deployedIndexes/" in index_endpoint:
+                # If it contains deployed index, parse it
+                parts = index_endpoint.split("/deployedIndexes/")
+                index_endpoint_resource = parts[0]
+                deployed_index_id = parts[1]
+            else:
+                # Assume it's just the endpoint resource name, use default deployed index
+                index_endpoint_resource = index_endpoint
+                deployed_index_id = "default"
+            
+            # Query Vector Search
+            request = aiplatform_v1.FindNeighborsRequest(
+                index_endpoint=index_endpoint_resource,
+                deployed_index_id=deployed_index_id,
+                queries=[aiplatform_v1.FindNeighborsRequest.Query(
+                    datapoint=aiplatform_v1.IndexDatapoint(
+                        feature_vector=query_embedding
+                    ),
+                    neighbor_count=top_k
+                )]
+            )
+            
+            response = self._match_client.find_neighbors(request)
+            
+            # Extract neighbor IDs
+            neighbor_ids = []
+            if response.neighbors:
+                for neighbor in response.neighbors[0].neighbors:
+                    neighbor_ids.append(neighbor.datapoint.datapoint_id)
+            
+            if not neighbor_ids:
+                return ""
+            
+            # Download metadata.jsonl from GCS
+            if not self._gcs_bucket:
+                return ""
+                
+            metadata_blob = self._storage_client.bucket(self._gcs_bucket).blob("corpus_latest/metadata.jsonl")
+            metadata_content = metadata_blob.download_as_text()
+            
+            # Parse metadata and map IDs to GCS URIs
+            id_to_uri = {}
+            for line in metadata_content.strip().split('\n'):
+                if line:
+                    record = json.loads(line)
+                    id_to_uri[record["id"]] = record["gcs_text_uri"]
+            
+            # Retrieve and concatenate relevant documents
+            context_parts = []
+            for neighbor_id in neighbor_ids[:top_k]:  # Limit to top_k
+                gcs_uri = id_to_uri.get(neighbor_id)
+                if gcs_uri:
+                    # Parse GCS URI: gs://bucket/path
+                    bucket_name, blob_path = gcs_uri.replace("gs://", "").split("/", 1)
+                    blob = self._storage_client.bucket(bucket_name).blob(blob_path)
+                    text_content = blob.download_as_text()
+                    context_parts.append(f"Document: {neighbor_id}\n{text_content}\n")
+            
+            return "\n".join(context_parts)
+            
+        except Exception as e:
+            print(f"Error retrieving vector search context: {e}")
+            return ""
 
     def generate_content(
         self,
@@ -39,6 +129,8 @@ class VertexAIRAG:
         rag_corpus: str | None = None,
         rag_similarity_top_k: int | None = 20,
         rag_vector_distance_threshold: float | None = 0.5,
+        vector_search_index_endpoint: str | None = None,
+        vector_search_similarity_top_k: int | None = 20,
         block_hate_speech=0,
         block_dangerous_content=0,
         block_sexually_explicit_content=0,
@@ -59,6 +151,19 @@ class VertexAIRAG:
         Returns:
             str: The generated text response from the model.
         """
+        # Handle Vector Search context retrieval
+        if vector_search_index_endpoint:
+            # Get the last user message as query
+            user_messages = [msg["text"] for msg in history if msg.get("role") == user_role]
+            query = user_messages[-1] if user_messages else ""
+            
+            if query:
+                vector_context = self._retrieve_vector_search_context(
+                    query, vector_search_index_endpoint, vector_search_similarity_top_k or 20
+                )
+                if vector_context:
+                    system_prompt = f"{system_prompt}\n\nContext from knowledge base:\n{vector_context}"
+        
         # Generate and parse response
         response = self._client.models.generate_content(
             model=model_name,
@@ -96,6 +201,8 @@ class VertexAIRAG:
         rag_corpus: str | None = None,
         rag_similarity_top_k: int | None = 20,
         rag_vector_distance_threshold: float | None = 0.5,
+        vector_search_index_endpoint: str | None = None,
+        vector_search_similarity_top_k: int | None = 20,
         block_hate_speech=0,
         block_dangerous_content=0,
         block_sexually_explicit_content=0,
@@ -116,6 +223,19 @@ class VertexAIRAG:
         Returns:
             str: The generated text response from the model.
         """
+        # Handle Vector Search context retrieval
+        if vector_search_index_endpoint:
+            # Get the last user message as query
+            user_messages = [msg["text"] for msg in history if msg.get("role") == user_role]
+            query = user_messages[-1] if user_messages else ""
+            
+            if query:
+                vector_context = self._retrieve_vector_search_context(
+                    query, vector_search_index_endpoint, vector_search_similarity_top_k or 20
+                )
+                if vector_context:
+                    system_prompt = f"{system_prompt}\n\nContext from knowledge base:\n{vector_context}"
+        
         # Generate and parse response
         response = await self._client.aio.models.generate_content(
             model=model_name,
@@ -153,12 +273,27 @@ class VertexAIRAG:
         rag_corpus: str | None = None,
         rag_similarity_top_k: int | None = 20,
         rag_vector_distance_threshold: float | None = 0.5,
+        vector_search_index_endpoint: str | None = None,
+        vector_search_similarity_top_k: int | None = 20,
         block_hate_speech=0,
         block_dangerous_content=0,
         block_sexually_explicit_content=0,
         block_harassment_content=0,
         seed: int | None = None,
     ) -> AsyncIterator[str]:
+        
+        # Handle Vector Search context retrieval
+        if vector_search_index_endpoint:
+            # Get the last user message as query
+            user_messages = [msg["text"] for msg in history if msg.get("role") == user_role]
+            query = user_messages[-1] if user_messages else ""
+            
+            if query:
+                vector_context = self._retrieve_vector_search_context(
+                    query, vector_search_index_endpoint, vector_search_similarity_top_k or 20
+                )
+                if vector_context:
+                    system_prompt = f"{system_prompt}\n\nContext from knowledge base:\n{vector_context}"
         
         cfg = self._make_config(
             system_prompt,

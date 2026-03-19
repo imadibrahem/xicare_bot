@@ -141,6 +141,14 @@ def gen_config(
             if config_response["rag_vector_distance_threshold"] >= 0
             else None
         ),
+        "vector_search_index_endpoint": (
+            config_response["vector_search_index_endpoint"] if config_response["vector_search_index_endpoint"] else None
+        ),
+        "vector_search_similarity_top_k": (
+            config_response["vector_search_similarity_top_k"]
+            if config_response["vector_search_similarity_top_k"] >= 0
+            else None
+        ),
         "block_hate_speech": config_response["block_hate_speech"],
         "block_dangerous_content": config_response["block_dangerous_content"],
         "block_sexually_explicit_content": config_response[

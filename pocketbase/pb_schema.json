@@ -930,6 +930,32 @@
         "type": "number"
       },
       {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "text_vector_search_index_endpoint",
+        "max": 0,
+        "min": 0,
+        "name": "vector_search_index_endpoint",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "hidden": false,
+        "id": "number_vector_search_similarity_top_k",
+        "max": null,
+        "min": null,
+        "name": "vector_search_similarity_top_k",
+        "onlyInt": true,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
         "hidden": false,
         "id": "number3193444616",
         "max": 3,
