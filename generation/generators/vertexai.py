@@ -113,8 +113,6 @@ class VertexAIRAG:
             
         except Exception as e:
             print(f"Error retrieving vector search context: {e}")
-            import traceback
-            traceback.print_exc()
             return ""
 
     def generate_content(
@@ -227,7 +225,6 @@ class VertexAIRAG:
         """
         # Handle Vector Search context retrieval
         if vector_search_index_endpoint:
-            print(f"[DEBUG] Vector Search: Processing request with endpoint: {vector_search_index_endpoint}")
             # Get the last user message as query
             user_messages = [msg["text"] for msg in history if msg.get("role") == user_role]
             query = user_messages[-1] if user_messages else ""
@@ -237,12 +234,7 @@ class VertexAIRAG:
                     query, vector_search_index_endpoint, vector_search_similarity_top_k or 20
                 )
                 if vector_context:
-                    print(f"[DEBUG] Vector Search: Adding context to system prompt (length: {len(vector_context)})")
                     system_prompt = f"{system_prompt}\n\nContext from knowledge base:\n{vector_context}"
-                else:
-                    print("[DEBUG] Vector Search: No context retrieved")
-            else:
-                print("[DEBUG] Vector Search: No user query found")
         
         # Generate and parse response
         response = await self._client.aio.models.generate_content(
@@ -292,7 +284,6 @@ class VertexAIRAG:
         
         # Handle Vector Search context retrieval
         if vector_search_index_endpoint:
-            print(f"[DEBUG] Vector Search: Processing streaming request with endpoint: {vector_search_index_endpoint}")
             # Get the last user message as query
             user_messages = [msg["text"] for msg in history if msg.get("role") == user_role]
             query = user_messages[-1] if user_messages else ""
@@ -302,12 +293,7 @@ class VertexAIRAG:
                     query, vector_search_index_endpoint, vector_search_similarity_top_k or 20
                 )
                 if vector_context:
-                    print(f"[DEBUG] Vector Search: Adding context to system prompt (length: {len(vector_context)})")
                     system_prompt = f"{system_prompt}\n\nContext from knowledge base:\n{vector_context}"
-                else:
-                    print("[DEBUG] Vector Search: No context retrieved")
-            else:
-                print("[DEBUG] Vector Search: No user query found")
         
         cfg = self._make_config(
             system_prompt,
