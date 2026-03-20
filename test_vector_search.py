@@ -12,12 +12,10 @@ from dotenv import load_dotenv
 # Load environment
 load_dotenv()
 
-PROJECT_ID = os.getenv("PROJECT_ID") or os.getenv("GCP_PROJECT_ID", "sqlxpert")
-LOCATION = os.getenv("LOCATION") or os.getenv("GCP_LOCATION", "europe-west4")
-GCS_BUCKET = os.getenv("GCS_BUCKET", "xicare-rag-corpus")
-
-# These come from PocketBase in production, but for test we use defaults
-INDEX_ENDPOINT = os.getenv("INDEX_ENDPOINT", "projects/655677396893/locations/europe-west4/indexEndpoints/5132986471388545024")
+PROJECT_ID = os.getenv("PROJECT_ID")
+LOCATION = os.getenv("LOCATION")
+GCS_BUCKET = os.getenv("GCS_BUCKET")
+INDEX_ENDPOINT = os.getenv("INDEX_ENDPOINT")
 DEPLOYED_INDEX_ID = os.getenv("DEPLOYED_INDEX_ID", "xicare_rag_endpoint_europe_1772032015024")
 
 print(f"[CONFIG]")
@@ -47,7 +45,7 @@ try:
     from google.api_core.client_options import ClientOptions
     
     match_client = aiplatform_v1.MatchServiceClient(
-        client_options=ClientOptions(api_endpoint=f"{LOCATION}-aiplatform.googleapis.com")
+        client_options=ClientOptions(api_endpoint="https://1379831426.europe-west4-655677396893.vdb.vertexai.goog")
     )
     
     request = aiplatform_v1.FindNeighborsRequest(
