@@ -1,3 +1,4 @@
+??? from here until ???END lines may have been inserted/deleted
 services:
   pocketbase:
     build: ./pocketbase
@@ -23,41 +24,34 @@ services:
     restart: unless-stopped
     networks: [appnet]
 
-  generation:
-    build: ./generation
-    command:
-      - uvicorn
-      - app:app
-      - --host
-      - 0.0.0.0
-      - --port
-      - "8000"
-      - --log-level
-      - info
-    env_file: .env
-    environment:
-      PROJECT_ID: sqlxpert
-      LOCATION: europe-west4
-    restart: unless-stopped
-    depends_on:
-      - redis
-    volumes:
-      - ./generation:/app/generation
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
-      interval: 30s
-      timeout: 3s
-      retries: 3
-    networks: [appnet]
-
+ generation:
+  build: ./generation
+  command:
+    - uvicorn
+    - app:app
+    - --host
+    - 0.0.0.0
+    - --port
+    - "8000"
+    - --log-level
+    - info
+  env_file: .env
+  environment:
+    PROJECT_ID: sqlxpert
+    LOCATION: europe-west4
+  restart: unless-stopped
+  depends_on:
+    - redis
+  volumes:
+    - ./generation
   caddy:
     image: caddy:2-alpine
     env_file: .env
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
+      - 80:80
+      - 443:443
+      - 443:443/udp
     volumes:
       - ./web-interface:/app/web-interface
       - ./Caddyfile:/etc/caddy/Caddyfile
@@ -76,3 +70,4 @@ volumes:
 networks:
   appnet:
     driver: bridge
+???END

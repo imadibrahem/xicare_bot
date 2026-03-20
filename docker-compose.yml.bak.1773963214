@@ -1,3 +1,4 @@
+??? from here until ???END lines may have been inserted/deleted
 services:
   pocketbase:
     build: ./pocketbase
@@ -55,9 +56,9 @@ services:
     env_file: .env
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
+      - 80:80
+      - 443:443
+      - 443:443/udp
     volumes:
       - ./web-interface:/app/web-interface
       - ./Caddyfile:/etc/caddy/Caddyfile
@@ -76,3 +77,4 @@ volumes:
 networks:
   appnet:
     driver: bridge
+???END
