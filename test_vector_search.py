@@ -34,7 +34,7 @@ try:
     import vertexai
     from vertexai.language_models import TextEmbeddingModel
     
-    vertexai.init(project=PROJECT_ID, location=LOCATION)
+    vertexai.init(project=PROJECT, location=LOCATION)
     embedding_model = TextEmbeddingModel.from_pretrained("text-multilingual-embedding-002")
     query_embedding = embedding_model.get_embeddings([query])[0].values
     print(f"✓ Embedding generated ({len(query_embedding)} dims)")
