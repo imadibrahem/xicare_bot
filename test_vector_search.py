@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 # Load environment
 load_dotenv()
 
-PROJECT = "sqlXpert"
+PROJECT = "655677396893"  # Numeric project ID from INDEX_ENDPOINT
 LOCATION = "europe-west4"
 GCS_BUCKET = "xicare-rag-bucket"  # Confirm this is your bucket name
 INDEX_ENDPOINT = "projects/655677396893/locations/europe-west4/indexEndpoints/5132986471388545024"
