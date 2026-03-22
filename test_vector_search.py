@@ -44,8 +44,8 @@ try:
     from google.cloud import aiplatform_v1
     from google.api_core.client_options import ClientOptions
     
-    match_client = MatchServiceClient(
-        client_options={"api_endpoint": f"{LOCATION}-aiplatform.googleapis.com"}
+    match_client = aiplatform_v1.MatchServiceClient(
+        client_options=ClientOptions(api_endpoint=f"{LOCATION}-aiplatform.googleapis.com")
     )
     
     request = aiplatform_v1.FindNeighborsRequest(
