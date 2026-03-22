@@ -45,7 +45,7 @@ try:
     from google.api_core.client_options import ClientOptions
     
     match_client = aiplatform_v1.MatchServiceClient(
-        client_options=ClientOptions(api_endpoint="https://1379831426.europe-west4-655677396893.vdb.vertexai.goog")
+        client_options=ClientOptions(api_endpoint="1379831426.europe-west4-655677396893.vdb.vertexai.goog:443")
     )
     
     request = aiplatform_v1.FindNeighborsRequest(
