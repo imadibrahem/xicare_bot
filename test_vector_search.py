@@ -41,18 +41,18 @@ try:
     print()
     
     print(f"[2] Testing Vector Search query...")
-    from google.cloud import aiplatform_v1
+    from google.cloud import aiplatform_v1beta1
     from google.api_core.client_options import ClientOptions
     
-    match_client = aiplatform_v1.MatchServiceClient(
+    match_client = aiplatform_v1beta1.MatchServiceClient(
         client_options=ClientOptions(api_endpoint=f"{LOCATION}-aiplatform.googleapis.com")
     )
     
-    request = aiplatform_v1.FindNeighborsRequest(
+    request = aiplatform_v1beta1.FindNeighborsRequest(
         index_endpoint=INDEX_ENDPOINT,
         deployed_index_id=DEPLOYED_INDEX_ID,
-        queries=[aiplatform_v1.FindNeighborsRequest.Query(
-            datapoint=aiplatform_v1.IndexDatapoint(feature_vector=query_embedding),
+        queries=[aiplatform_v1beta1.FindNeighborsRequest.Query(
+            datapoint=aiplatform_v1beta1.IndexDatapoint(feature_vector=query_embedding),
             neighbor_count=4
         )]
     )
