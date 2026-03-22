@@ -12,14 +12,14 @@ from dotenv import load_dotenv
 # Load environment
 load_dotenv()
 
-PROJECT_ID = os.getenv("PROJECT_ID")
-LOCATION = os.getenv("LOCATION")
-GCS_BUCKET = os.getenv("GCS_BUCKET")
-INDEX_ENDPOINT = os.getenv("INDEX_ENDPOINT")
-DEPLOYED_INDEX_ID = os.getenv("DEPLOYED_INDEX_ID", "xicare_rag_endpoint_europe_1772032015024")
+PROJECT = "sqlXpert"
+LOCATION = "europe-west4"
+GCS_BUCKET = "xicare-rag-bucket"  # Confirm this is your bucket name
+INDEX_ENDPOINT = "projects/655677396893/locations/europe-west4/indexEndpoints/5132986471388545024"
+DEPLOYED_INDEX_ID = "xicare_rag_endpoint_europe_1772032015024"
 
 print(f"[CONFIG]")
-print(f"  PROJECT: {PROJECT_ID}")
+print(f"  PROJECT: {PROJECT}")
 print(f"  LOCATION: {LOCATION}")
 print(f"  GCS_BUCKET: {GCS_BUCKET}")
 print(f"  INDEX_ENDPOINT: {INDEX_ENDPOINT}")
@@ -44,8 +44,8 @@ try:
     from google.cloud import aiplatform_v1
     from google.api_core.client_options import ClientOptions
     
-    match_client = aiplatform_v1.MatchServiceClient(
-        client_options=ClientOptions(api_endpoint="1379831426.europe-west4-655677396893.vdb.vertexai.goog:443")
+    match_client = MatchServiceClient(
+        client_options={"api_endpoint": f"{LOCATION}-aiplatform.googleapis.com"}
     )
     
     request = aiplatform_v1.FindNeighborsRequest(
@@ -53,7 +53,7 @@ try:
         deployed_index_id=DEPLOYED_INDEX_ID,
         queries=[aiplatform_v1.FindNeighborsRequest.Query(
             datapoint=aiplatform_v1.IndexDatapoint(feature_vector=query_embedding),
-            neighbor_count=5
+            neighbor_count=4
         )]
     )
     
