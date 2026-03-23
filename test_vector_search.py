@@ -44,6 +44,7 @@ try:
     from google.cloud import aiplatform_v1
     from google.api_core.client_options import ClientOptions
     import google.auth
+    from google.cloud.aiplatform.matching_engine import MatchServiceClient
     
     # Check authentication
     try:
@@ -71,7 +72,7 @@ try:
         print(f"✗ IndexEndpointServiceClient failed: {e}")
         print("Trying MatchServiceClient directly...")
     
-    match_client = aiplatform_v1.MatchServiceClient(
+    match_client = MatchServiceClient(
         client_options=ClientOptions(api_endpoint=f"{LOCATION}-aiplatform.googleapis.com")
     )
     
