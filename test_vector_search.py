@@ -41,26 +41,50 @@ try:
     print()
     
     print(f"[2] Testing Vector Search query...")
-    from vertexai.preview import aiplatform_v1
+    from google.cloud import aiplatform_v1
+    from google.api_core.client_options import ClientOptions
+    import google.auth
     
-    # Use the deployed index endpoint
-    index_endpoint_client = aiplatform_v1.IndexEndpointServiceClient(
-        client_options={"api_endpoint": f"{LOCATION}-aiplatform.googleapis.com"}
+    # Check authentication
+    try:
+        credentials, project = google.auth.default()
+        print(f"✓ Authentication successful for project: {project}")
+    except Exception as e:
+        print(f"✗ Authentication failed: {e}")
+        raise
+    
+    # Try to list available index endpoints first
+    try:
+        index_endpoint_client = aiplatform_v1.IndexEndpointServiceClient(
+            client_options=ClientOptions(api_endpoint=f"{LOCATION}-aiplatform.googleapis.com")
+        )
+        print(f"✓ IndexEndpointServiceClient created successfully")
+        
+        # Test if we can access the endpoint
+        list_request = aiplatform_v1.ListIndexEndpointsRequest(
+            parent=f"projects/{PROJECT}/locations/{LOCATION}"
+        )
+        endpoints = index_endpoint_client.list_index_edges(request=list_request)
+        print(f"✓ Found {len(list(endpoints))} index endpoints")
+        
+    except Exception as e:
+        print(f"✗ IndexEndpointServiceClient failed: {e}")
+        print("Trying MatchServiceClient directly...")
+    
+    match_client = aiplatform_v1.MatchServiceClient(
+        client_options=ClientOptions(api_endpoint=f"{LOCATION}-aiplatform.googleapis.com")
     )
     
-    # Find neighbors
     request = aiplatform_v1.FindNeighborsRequest(
         index_endpoint=INDEX_ENDPOINT,
         deployed_index_id=DEPLOYED_INDEX_ID,
         queries=[aiplatform_v1.FindNeighborsRequest.Query(
-            datapoint=aiplatform_v1.IndexDatapoint(
-                feature_vector=query_embedding
-            ),
+            datapoint=aiplatform_v1.IndexDatapoint(feature_vector=query_embedding),
             neighbor_count=4
         )]
     )
     
-    response = index_endpoint_client.find_neighbors(request)
+    response = match_client.find_neighbors(request)
     
     if response.neighbors and response.neighbors[0].neighbors:
         neighbors = response.neighbors[0].neighbors
