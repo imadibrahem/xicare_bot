@@ -8,6 +8,7 @@ import sys
 import os
 import json
 from dotenv import load_dotenv
+import google.auth
 
 # Load environment
 load_dotenv()
@@ -17,6 +18,27 @@ LOCATION = "europe-west4"
 GCS_BUCKET = "xicare-rag-bucket"  # Confirm this is your bucket name
 INDEX_ENDPOINT = "projects/655677396893/locations/europe-west4/indexEndpoints/5132986471388545024"
 DEPLOYED_INDEX_ID = "xicare_rag_endpoint_europe_1772032015024"
+
+
+def _project_from_index_endpoint(endpoint: str) -> str:
+    try:
+        parts = endpoint.split("/")
+        if len(parts) > 1:
+            return parts[1]
+    except Exception:
+        pass
+    return PROJECT
+
+INDEX_PROJECT = _project_from_index_endpoint(INDEX_ENDPOINT)
+
+try:
+    credentials, auth_project = google.auth.default()
+    if auth_project and auth_project != INDEX_PROJECT:
+        print(f"Warning: Authenticated project '{auth_project}' differs from INDEX_ENDPOINT project '{INDEX_PROJECT}'")
+        print("Using configured INDEX_ENDPOINT and DEPLOYED_INDEX_ID; do not auto-rewrite the endpoint.")
+except Exception as e:
+    print(f"Auth check failed: {e}")
+    auth_project = None
 
 print(f"[CONFIG]")
 print(f"  PROJECT: {PROJECT}")
@@ -43,8 +65,7 @@ try:
     print(f"[2] Testing Vector Search query...")
     from google.cloud import aiplatform_v1
     from google.api_core.client_options import ClientOptions
-    import google.auth
-    from google.cloud.aiplatform.matching_engine import MatchServiceClient
+    from google.api_core.exceptions import MethodNotImplemented
     
     # Check authentication
     try:
@@ -65,16 +86,20 @@ try:
         list_request = aiplatform_v1.ListIndexEndpointsRequest(
             parent=f"projects/{PROJECT}/locations/{LOCATION}"
         )
-        endpoints = index_endpoint_client.list_index_edges(request=list_request)
+        endpoints = index_endpoint_client.list_index_endpoints(request=list_request)
         print(f"✓ Found {len(list(endpoints))} index endpoints")
+        
+        # Get details of our specific endpoint
+        get_request = aiplatform_v1.GetIndexEndpointRequest(name=INDEX_ENDPOINT)
+        endpoint_details = index_endpoint_client.get_index_endpoint(request=get_request)
+        print(f"✓ Endpoint details: {endpoint_details.name}")
+        print(f"  Deployed indexes: {len(endpoint_details.deployed_indexes)}")
+        for deployed in endpoint_details.deployed_indexes:
+            print(f"    - ID: {deployed.id}, Index: {deployed.index}")
         
     except Exception as e:
         print(f"✗ IndexEndpointServiceClient failed: {e}")
         print("Trying MatchServiceClient directly...")
-    
-    match_client = MatchServiceClient(
-        client_options=ClientOptions(api_endpoint=f"{LOCATION}-aiplatform.googleapis.com")
-    )
     
     request = aiplatform_v1.FindNeighborsRequest(
         index_endpoint=INDEX_ENDPOINT,
@@ -84,8 +109,33 @@ try:
             neighbor_count=4
         )]
     )
-    
-    response = match_client.find_neighbors(request)
+
+    # Try find_neighbors with the regional endpoint first, then global.
+    match_client = None
+    response = None
+    tried_match_endpoints = [
+        f"{LOCATION}-aiplatform.googleapis.com",
+        "aiplatform.googleapis.com",
+    ]
+
+    for match_api in tried_match_endpoints:
+        try:
+            match_client = aiplatform_v1.MatchServiceClient(
+                client_options=ClientOptions(api_endpoint=match_api)
+            )
+            print(f"✓ MatchServiceClient created with {match_api}")
+            response = match_client.find_neighbors(request)
+            print(f"✓ find_neighbors succeeded on {match_api}")
+            break
+        except MethodNotImplemented as e:
+            print(f"✗ find_neighbors not implemented on {match_api}: {e}")
+            continue
+        except Exception as e:
+            print(f"✗ match_client find_neighbors failed on {match_api}: {e}")
+            raise
+
+    if response is None:
+        raise RuntimeError("No working MatchService endpoint found (501/UNIMPLEMENTED)" )
     
     if response.neighbors and response.neighbors[0].neighbors:
         neighbors = response.neighbors[0].neighbors
@@ -100,7 +150,7 @@ try:
     print(f"[3] Testing GCS metadata retrieval...")
     from google.cloud import storage
     
-    storage_client = storage.Client(project=PROJECT_ID)
+    storage_client = storage.Client(project=PROJECT)
     metadata_blob = storage_client.bucket(GCS_BUCKET).blob("corpus_latest/metadata.jsonl")
     
     if metadata_blob.exists():

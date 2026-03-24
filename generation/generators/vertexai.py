@@ -73,7 +73,18 @@ class VertexAIRAG:
                 )]
             )
             
-            response = self._match_client.find_neighbors(request)
+            try:
+                response = self._match_client.find_neighbors(request)
+            except Exception as e:
+                # Retry with global endpoint if regional match service endpoint is unavailable
+                from google.api_core.exceptions import MethodNotImplemented
+                if isinstance(e, MethodNotImplemented):
+                    global_match = aiplatform_v1.MatchServiceClient(
+                        client_options=ClientOptions(api_endpoint="aiplatform.googleapis.com")
+                    )
+                    response = global_match.find_neighbors(request)
+                else:
+                    raise
             
             # Extract neighbor IDs
             neighbor_ids = []
