@@ -13,11 +13,11 @@ import google.auth
 # Load environment
 load_dotenv()
 
-PROJECT = "655677396893"  # Numeric project ID from INDEX_ENDPOINT
+PROJECT = "sqlxpert"  # Updated to match authentication project
 LOCATION = "europe-west4"
 GCS_BUCKET = "xicare-rag-bucket"  # Confirm this is your bucket name
-INDEX_ENDPOINT = "projects/655677396893/locations/europe-west4/indexEndpoints/5132986471388545024"
-DEPLOYED_INDEX_ID = "xicare_rag_endpoint_europe_1772032015024"
+INDEX_ENDPOINT = "projects/sqlxpert/locations/europe-west4/indexEndpoints/YOUR_NEW_ENDPOINT_ID"  # Update with new endpoint ID
+DEPLOYED_INDEX_ID = "YOUR_NEW_DEPLOYED_INDEX_ID"  # Update with new deployed index ID
 
 
 def _project_from_index_endpoint(endpoint: str) -> str:
@@ -36,6 +36,9 @@ try:
     if auth_project and auth_project != INDEX_PROJECT:
         print(f"Warning: Authenticated project '{auth_project}' differs from INDEX_ENDPOINT project '{INDEX_PROJECT}'")
         print("Using configured INDEX_ENDPOINT and DEPLOYED_INDEX_ID; do not auto-rewrite the endpoint.")
+        print(f"To fix: authenticate with project {INDEX_PROJECT} or recreate resources in {auth_project}")
+        print(f"Run: gcloud config set project {INDEX_PROJECT}")
+        print(f"Or set GOOGLE_CLOUD_PROJECT={INDEX_PROJECT} in environment")
 except Exception as e:
     print(f"Auth check failed: {e}")
     auth_project = None
