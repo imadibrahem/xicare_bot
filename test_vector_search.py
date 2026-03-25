@@ -37,6 +37,9 @@ try:
     if auth_project and auth_project != INDEX_PROJECT:
         print(f"Warning: Authenticated project '{auth_project}' differs from INDEX_ENDPOINT project '{INDEX_PROJECT}'")
         print("Using configured INDEX_ENDPOINT and DEPLOYED_INDEX_ID; do not auto-rewrite the endpoint.")
+        print(f"To fix: authenticate with project {INDEX_PROJECT} or recreate resources in {auth_project}")
+        print(f"Run: gcloud config set project {INDEX_PROJECT}")
+        print(f"Or set GOOGLE_CLOUD_PROJECT={INDEX_PROJECT} in environment")
 except Exception as e:
     print(f"Auth check failed: {e}")
     auth_project = None
