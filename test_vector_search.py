@@ -16,8 +16,8 @@ load_dotenv()
 PROJECT = "655677396893"  # Numeric project ID from INDEX_ENDPOINT
 LOCATION = "europe-west4"
 GCS_BUCKET = "xicare-rag-bucket"  # Confirm this is your bucket name
-INDEX_ENDPOINT = "projects/655677396893/locations/europe-west4/indexEndpoints/5132986471388545024"
-DEPLOYED_INDEX_ID = "xicare_rag_endpoint_europe_1772032015024"
+INDEX_ENDPOINT = "projects/655677396893/locations/europe-west4/indexEndpoints/4998863644985917440"
+DEPLOYED_INDEX_ID = "xicare_rag_endpoint_europe"
 
 
 def _project_from_index_endpoint(endpoint: str) -> str:
