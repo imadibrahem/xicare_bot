@@ -13,7 +13,8 @@ import google.auth
 # Load environment
 load_dotenv()
 
-PROJECT = "655677396893"  # Numeric project ID from INDEX_ENDPOINT
+PROJECT = "sqlxpert"  # Default project, will try to auto-detect from INDEX_ENDPOINT if possible
+#PROJECT = "655677396893"  # Numeric project ID from INDEX_ENDPOINT
 LOCATION = "europe-west4"
 GCS_BUCKET = "xicare-rag-bucket"  # Confirm this is your bucket name
 INDEX_ENDPOINT = "projects/655677396893/locations/europe-west4/indexEndpoints/4998863644985917440"
