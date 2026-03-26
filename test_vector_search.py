@@ -13,7 +13,7 @@ import google.auth
 # Load environment
 load_dotenv()
 
-PROJECT = "sqlxpert"  # Default project, will try to auto-detect from INDEX_ENDPOINT if possible
+PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT", "sqlxpert")  # Default project, will try to auto-detect from INDEX_ENDPOINT if possible
 #PROJECT = "655677396893"  # Numeric project ID from INDEX_ENDPOINT
 LOCATION = "europe-west4"
 GCS_BUCKET = "xicare-rag-bucket"  # Confirm this is your bucket name
@@ -105,18 +105,20 @@ try:
         print(f"✗ IndexEndpointServiceClient failed: {e}")
         print("Trying MatchServiceClient directly...")
     
-    request = aiplatform_v1.MatchRequest(
-        index_endpoint=INDEX_ENDPOINT,
-        deployed_index_id=DEPLOYED_INDEX_ID,
-        queries=[aiplatform_v1.MatchRequest.Query(
-            datapoint=aiplatform_v1.IndexDatapoint(feature_vector=query_embedding),
-            neighbor_count=4
-        )]
-    )
+    request = {
+        "index_endpoint": INDEX_ENDPOINT,
+        "deployed_index_id": DEPLOYED_INDEX_ID,
+        "queries": [
+            {
+                "datapoint": {"feature_vector": query_embedding},
+                "neighbor_count": 4,
+            }
+        ],
+    }
 
     # Use IndexEndpointServiceClient.match for Vector Search
     try:
-        response = index_endpoint_client.match(request)
+        response = index_endpoint_client.match(request=request)
         print(f"✓ match succeeded on {LOCATION}-aiplatform.googleapis.com")
     except MethodNotImplemented as e:
         print(f"✗ match not implemented on {LOCATION}-aiplatform.googleapis.com: {e}")
@@ -157,16 +159,17 @@ try:
     print()
     
     print(f"[4] Testing document retrieval...")
-    if response.neighbors and response.neighbors[0].neighbors and metadata_blob.exists():
+    nearest = getattr(response, "nearest_neighbors", None)
+    if nearest and nearest[0].neighbors and metadata_blob.exists():
         # Parse all metadata
         id_to_uri = {}
         for line in lines:
             if line:
                 record = json.loads(line)
                 id_to_uri[record["id"]] = record["gcs_text_uri"]
-        
+
         # Try to fetch first neighbor's document
-        first_neighbor_id = response.neighbors[0].neighbors[0].datapoint.datapoint_id
+        first_neighbor_id = nearest[0].neighbors[0].datapoint.datapoint_id
         gcs_uri = id_to_uri.get(first_neighbor_id)
         
         if gcs_uri:
