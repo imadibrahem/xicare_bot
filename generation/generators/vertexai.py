@@ -8,6 +8,8 @@ from google.cloud import storage
 import vertexai
 import json
 import os
+import httpx
+import google.auth
 
 harm_thresholds = [
     "BLOCK_NONE",
@@ -42,55 +44,66 @@ class VertexAIRAG:
         self._gcs_bucket = os.getenv("GCS_BUCKET")
 
     def _retrieve_vector_search_context(self, query: str, index_endpoint: str, top_k: int = 20) -> str:
-        """Retrieve relevant documents from Vector Search and return as context."""
+        """Retrieve relevant documents from Vector Search (REST API) and return as context."""
         try:
             # Embed the query
             from vertexai.language_models import TextEmbeddingModel
             embedding_model = TextEmbeddingModel.from_pretrained("text-multilingual-embedding-002")
             query_embedding = embedding_model.get_embeddings([query])[0].values
             
-            # Assume index_endpoint is the IndexEndpoint resource name
-            # Extract deployed_index_id from the endpoint name or assume default
-            if "/deployedIndexes/" in index_endpoint:
-                # If it contains deployed index, parse it
-                parts = index_endpoint.split("/deployedIndexes/")
-                index_endpoint_resource = parts[0]
-                deployed_index_id = parts[1]
-            else:
-                # Assume it's just the endpoint resource name, use default deployed index
-                index_endpoint_resource = index_endpoint
-                deployed_index_id = "default"
+            # Parse index_endpoint to extract public REST endpoint
+            # Expected format: projects/655677396893/locations/europe-west4/indexEndpoints/4998863644985917440
+            # Deployed index ID from configuration: xicare_rag_endpoint_europe
+            # Index ID: 8473144466897633280
             
-            # Query Vector Search
-            request = aiplatform_v1.FindNeighborsRequest(
-                index_endpoint=index_endpoint_resource,
-                deployed_index_id=deployed_index_id,
-                queries=[aiplatform_v1.FindNeighborsRequest.Query(
-                    datapoint=aiplatform_v1.IndexDatapoint(
-                        feature_vector=query_embedding
-                    ),
-                    neighbor_count=top_k
-                )]
-            )
+            # For now, hardcode these from config (should be parameterized)
+            public_endpoint_domain = os.getenv("VECTOR_SEARCH_PUBLIC_ENDPOINT", "1905681392.europe-west4-655677396893.vdb.vertexai.goog")
+            project_id = self._project.split("@")[0] if "@" in self._project else "655677396893"  # fallback to numeric ID
+            index_id = os.getenv("VECTOR_SEARCH_INDEX_ID", "8473144466897633280")
+            deployed_index_id = os.getenv("VECTOR_SEARCH_DEPLOYED_INDEX_ID", "xicare_rag_endpoint_europe")
             
-            try:
-                response = self._match_client.find_neighbors(request)
-            except Exception as e:
-                # Retry with global endpoint if regional match service endpoint is unavailable
-                from google.api_core.exceptions import MethodNotImplemented
-                if isinstance(e, MethodNotImplemented):
-                    global_match = aiplatform_v1.MatchServiceClient(
-                        client_options=ClientOptions(api_endpoint="aiplatform.googleapis.com")
-                    )
-                    response = global_match.find_neighbors(request)
-                else:
-                    raise
+            # Construct REST URL for Vertex AI Vector Search public endpoint
+            rest_url = f"https://{public_endpoint_domain}/v1/projects/{project_id}/locations/{self._location}/indexes/{index_id}:findNeighbors"
             
-            # Extract neighbor IDs
+            # Get auth token
+            credentials, _ = google.auth.default()
+            auth_token = credentials.token
+            
+            # Prepare request
+            request_body = {
+                "deployed_index_id": deployed_index_id,
+                "queries": [
+                    {
+                        "datapoint": {
+                            "feature_vector": query_embedding
+                        },
+                        "neighbor_count": top_k
+                    }
+                ]
+            }
+            
+            headers = {
+                "Authorization": f"Bearer {auth_token}",
+                "Content-Type": "application/json"
+            }
+            
+            # Make REST request (blocking call within async context is OK for retrieval)
+            response = httpx.post(rest_url, json=request_body, headers=headers, timeout=30.0)
+            
+            if response.status_code != 200:
+                print(f"Vector Search REST API error: {response.status_code} - {response.text}")
+                return ""
+            
+            result = response.json()
             neighbor_ids = []
-            if response.neighbors:
-                for neighbor in response.neighbors[0].neighbors:
-                    neighbor_ids.append(neighbor.datapoint.datapoint_id)
+            
+            # Parse neighbors from REST response
+            nearest = result.get("nearestNeighbors", [])
+            if nearest and len(nearest) > 0 and "neighbors" in nearest[0]:
+                for neighbor in nearest[0]["neighbors"]:
+                    neighbor_id = neighbor.get("datapoint", {}).get("datapointId")
+                    if neighbor_id:
+                        neighbor_ids.append(neighbor_id)
             
             if not neighbor_ids:
                 return ""
@@ -111,7 +124,7 @@ class VertexAIRAG:
             
             # Retrieve and concatenate relevant documents
             context_parts = []
-            for neighbor_id in neighbor_ids[:top_k]:  # Limit to top_k
+            for neighbor_id in neighbor_ids[:top_k]:
                 gcs_uri = id_to_uri.get(neighbor_id)
                 if gcs_uri:
                     # Parse GCS URI: gs://bucket/path
@@ -124,6 +137,8 @@ class VertexAIRAG:
             
         except Exception as e:
             print(f"Error retrieving vector search context: {e}")
+            import traceback
+            traceback.print_exc()
             return ""
 
     def generate_content(
