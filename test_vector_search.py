@@ -105,49 +105,35 @@ try:
         print(f"✗ IndexEndpointServiceClient failed: {e}")
         print("Trying MatchServiceClient directly...")
     
-    request = aiplatform_v1.FindNeighborsRequest(
+    request = aiplatform_v1.MatchRequest(
         index_endpoint=INDEX_ENDPOINT,
         deployed_index_id=DEPLOYED_INDEX_ID,
-        queries=[aiplatform_v1.FindNeighborsRequest.Query(
+        queries=[aiplatform_v1.MatchRequest.Query(
             datapoint=aiplatform_v1.IndexDatapoint(feature_vector=query_embedding),
             neighbor_count=4
         )]
     )
 
-    # Try find_neighbors with the regional endpoint first, then global.
-    match_client = None
-    response = None
-    tried_match_endpoints = [
-        f"{LOCATION}-aiplatform.googleapis.com",
-        "aiplatform.googleapis.com",
-    ]
-
-    for match_api in tried_match_endpoints:
-        try:
-            match_client = aiplatform_v1.MatchServiceClient(
-                client_options=ClientOptions(api_endpoint=match_api)
-            )
-            print(f"✓ MatchServiceClient created with {match_api}")
-            response = match_client.find_neighbors(request)
-            print(f"✓ find_neighbors succeeded on {match_api}")
-            break
-        except MethodNotImplemented as e:
-            print(f"✗ find_neighbors not implemented on {match_api}: {e}")
-            continue
-        except Exception as e:
-            print(f"✗ match_client find_neighbors failed on {match_api}: {e}")
-            raise
-
-    if response is None:
-        raise RuntimeError("No working MatchService endpoint found (501/UNIMPLEMENTED)" )
+    # Use IndexEndpointServiceClient.match for Vector Search
+    try:
+        response = index_endpoint_client.match(request)
+        print(f"✓ match succeeded on {LOCATION}-aiplatform.googleapis.com")
+    except MethodNotImplemented as e:
+        print(f"✗ match not implemented on {LOCATION}-aiplatform.googleapis.com: {e}")
+        raise
+    except Exception as e:
+        print(f"✗ match_client match failed on {LOCATION}-aiplatform.googleapis.com: {e}")
+        raise
     
-    if response.neighbors and response.neighbors[0].neighbors:
-        neighbors = response.neighbors[0].neighbors
+    if response and response.nearest_neighbors and response.nearest_neighbors[0].neighbors:
+        neighbors = response.nearest_neighbors[0].neighbors
         print(f"✓ Found {len(neighbors)} neighbors")
         for i, neighbor in enumerate(neighbors[:5]):
             distance = getattr(neighbor, 'distance', 'N/A')
             print(f"  [{i+1}] ID: {neighbor.datapoint.datapoint_id}, Distance: {distance}")
     else:
+        print("✗ No neighbors found in response")
+        print(f"Response: {response}")
         print(f"✗ No neighbors found!")
     print()
     

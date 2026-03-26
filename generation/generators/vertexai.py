@@ -35,7 +35,7 @@ class VertexAIRAG:
         self._project = project
         self._location = location
         vertexai.init(project=project, location=location)
-        self._match_client = aiplatform_v1.MatchServiceClient(
+        self._match_client = aiplatform_v1.IndexEndpointServiceClient(
             client_options=ClientOptions(api_endpoint=f"{location}-aiplatform.googleapis.com")
         )
         self._storage_client = storage.Client(project=project)
