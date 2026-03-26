@@ -105,7 +105,7 @@ try:
         print(f"✗ IndexEndpointServiceClient failed: {e}")
         print("Trying MatchServiceClient directly...")
     
-    request = {
+    request_payload = {
         "index_endpoint": INDEX_ENDPOINT,
         "deployed_index_id": DEPLOYED_INDEX_ID,
         "queries": [
@@ -116,19 +116,59 @@ try:
         ],
     }
 
-    # Use IndexEndpointServiceClient.match for Vector Search
-    try:
-        response = index_endpoint_client.match(request=request)
-        print(f"✓ match succeeded on {LOCATION}-aiplatform.googleapis.com")
-    except MethodNotImplemented as e:
-        print(f"✗ match not implemented on {LOCATION}-aiplatform.googleapis.com: {e}")
-        raise
-    except Exception as e:
-        print(f"✗ match_client match failed on {LOCATION}-aiplatform.googleapis.com: {e}")
-        raise
-    
-    if response and response.nearest_neighbors and response.nearest_neighbors[0].neighbors:
-        neighbors = response.nearest_neighbors[0].neighbors
+    response = None
+
+    # Try new IndexEndpointServiceClient.match if available
+    if hasattr(index_endpoint_client, "match"):
+        try:
+            response = index_endpoint_client.match(request=request_payload)
+            print(f"✓ match succeeded (IndexEndpointServiceClient.match)")
+        except MethodNotImplemented as e:
+            print(f"✗ match not implemented (IndexEndpointServiceClient.match): {e}")
+            response = None
+        except Exception as e:
+            print(f"✗ IndexEndpointServiceClient.match failed: {e}")
+            response = None
+
+    # Fallback to MatchServiceClient.find_neighbors (legacy approach)
+    if response is None:
+        try:
+            match_client = aiplatform_v1.MatchServiceClient(
+                client_options=ClientOptions(api_endpoint=f"{LOCATION}-aiplatform.googleapis.com")
+            )
+            find_request = aiplatform_v1.FindNeighborsRequest(
+                index_endpoint=INDEX_ENDPOINT,
+                deployed_index_id=DEPLOYED_INDEX_ID,
+                queries=[
+                    aiplatform_v1.FindNeighborsRequest.Query(
+                        datapoint=aiplatform_v1.IndexDatapoint(feature_vector=query_embedding),
+                        neighbor_count=4,
+                    )
+                ],
+            )
+            response = match_client.find_neighbors(request=find_request)
+            print(f"✓ find_neighbors succeeded (MatchServiceClient at {LOCATION}-aiplatform.googleapis.com)")
+        except MethodNotImplemented as e:
+            print(f"✗ find_neighbors not implemented (MatchServiceClient): {e}")
+            try:
+                match_client = aiplatform_v1.MatchServiceClient(
+                    client_options=ClientOptions(api_endpoint="aiplatform.googleapis.com")
+                )
+                response = match_client.find_neighbors(request=find_request)
+                print(f"✓ find_neighbors succeeded (MatchServiceClient at aiplatform.googleapis.com)")
+            except Exception as e2:
+                print(f"✗ find_neighbors also failed on aiplatform.googleapis.com: {e2}")
+                response = None
+        except Exception as e:
+            print(f"✗ MatchServiceClient.find_neighbors failed: {e}")
+            response = None
+
+    if not response:
+        raise RuntimeError("No working Vector Search match endpoint found")
+
+    nearest = getattr(response, "nearest_neighbors", getattr(response, "neighbors", []))
+    if nearest and len(nearest) > 0 and getattr(nearest[0], "neighbors", None):
+        neighbors = nearest[0].neighbors
         print(f"✓ Found {len(neighbors)} neighbors")
         for i, neighbor in enumerate(neighbors[:5]):
             distance = getattr(neighbor, 'distance', 'N/A')
@@ -136,7 +176,7 @@ try:
     else:
         print("✗ No neighbors found in response")
         print(f"Response: {response}")
-        print(f"✗ No neighbors found!")
+        raise RuntimeError("No neighbors found from Vector Search response")
     print()
     
     print(f"[3] Testing GCS metadata retrieval...")
