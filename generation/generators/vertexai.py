@@ -62,9 +62,8 @@ class VertexAIRAG:
             index_id = os.getenv("VECTOR_SEARCH_INDEX_ID", "8473144466897633280")
             deployed_index_id = os.getenv("VECTOR_SEARCH_DEPLOYED_INDEX_ID", "xicare_rag_endpoint_europe")
             
-            # Construct REST URL for Vertex AI Vector Search public endpoint
-            # For Vector Search (public endpoint) path uses /v1/indexes/{index_id}:findNeighbors
-            rest_url = f"https://{public_endpoint_domain}/v1/indexes/{index_id}:findNeighbors"
+            # Construct REST URL for Vertex AI Vector Search using standard AI Platform API
+            rest_url = f"https://{self._location}-aiplatform.googleapis.com/v1/{index_endpoint}:findNeighbors"
             
             # Get auth token
             credentials, _ = google.auth.default()
