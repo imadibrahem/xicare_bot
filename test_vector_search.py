@@ -63,8 +63,8 @@ try:
     print(f"✓ Authentication successful for project: {project}")
     
     # Construct REST request to public endpoint
-    # For Vertex AI Vector Search, use the public VDB endpoint
-    rest_url = f"{REST_API_BASE}/projects/{PROJECT_ID}/locations/{LOCATION}/indexes/{INDEX_ID}:findNeighbors"
+    # For Vertex AI Vector Search, with public VDB endpoint, the path is index-level
+    rest_url = f"{REST_API_BASE}/indexes/{INDEX_ID}:findNeighbors"
     
     request_body = {
         "deployed_index_id": DEPLOYED_INDEX_ID,
