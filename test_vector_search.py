@@ -57,8 +57,11 @@ try:
     # ===== [2] Test Vector Search via REST API =====
     print(f"[2] Testing Vector Search via REST API (Streaming Index)...")
     
-    # Get credentials for auth header
-    credentials, project = google.auth.default()
+    # Get credentials for auth header (refresh if needed)
+    from google.auth.transport.requests import Request
+    credentials, project = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
+    if not credentials.valid:
+        credentials.refresh(Request())
     auth_token = credentials.token
     print(f"✓ Authentication successful for project: {project}")
     

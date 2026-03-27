@@ -65,8 +65,11 @@ class VertexAIRAG:
             # Construct REST URL for Vertex AI Vector Search using standard AI Platform API
             rest_url = f"https://{self._location}-aiplatform.googleapis.com/v1/{index_endpoint}:findNeighbors"
             
-            # Get auth token
-            credentials, _ = google.auth.default()
+            # Get auth token (refresh if needed)
+            from google.auth.transport.requests import Request
+            credentials, _ = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
+            if not credentials.valid:
+                credentials.refresh(Request())
             auth_token = credentials.token
             
             # Prepare request
