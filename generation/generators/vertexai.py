@@ -45,6 +45,7 @@ class VertexAIRAG:
 
     def _retrieve_vector_search_context(self, query: str, index_endpoint: str, top_k: int = 20) -> str:
         """Retrieve relevant documents from Vector Search (REST API) and return as context."""
+        print(f"[DEBUG] GCS_BUCKET: {self._gcs_bucket}")
         print(f"[DEBUG] _retrieve_vector_search_context called with query='{query[:50]}...', index_endpoint='{index_endpoint}', top_k={top_k}")
         try:
             # Embed the query
@@ -160,7 +161,7 @@ class VertexAIRAG:
                 text_content = blob.download_as_text()
 
                 context_parts.append(f"Document: {neighbor_id}\n{text_content}\n")     
-                       
+
             context = "\n".join(context_parts)
             print(f"[DEBUG] Vector context prepared: {len(context)} total chars, {len(context_parts)} documents")
             return context
