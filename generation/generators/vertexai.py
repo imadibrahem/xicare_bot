@@ -45,14 +45,14 @@ class VertexAIRAG:
 
     def _retrieve_vector_search_context(self, query: str, index_endpoint: str, top_k: int = 20) -> str:
         """Retrieve relevant documents from Vector Search (REST API) and return as context."""
-        print(f"[DEBUG] GCS_BUCKET: {self._gcs_bucket}")
-        print(f"[DEBUG] _retrieve_vector_search_context called with query='{query[:50]}...', index_endpoint='{index_endpoint}', top_k={top_k}")
+        #print(f"[DEBUG] GCS_BUCKET: {self._gcs_bucket}")
+        #print(f"[DEBUG] _retrieve_vector_search_context called with query='{query[:50]}...', index_endpoint='{index_endpoint}', top_k={top_k}")
         try:
             # Embed the query
             from vertexai.language_models import TextEmbeddingModel
             embedding_model = TextEmbeddingModel.from_pretrained("text-multilingual-embedding-002")
             query_embedding = embedding_model.get_embeddings([query])[0].values
-            print(f"[DEBUG] Embedding generated: {len(query_embedding)} dimensions")
+            #print(f"[DEBUG] Embedding generated: {len(query_embedding)} dimensions")
             
             # Parse index_endpoint to extract public REST endpoint
             # Expected format: projects/655677396893/locations/europe-west4/indexEndpoints/4998863644985917440
@@ -68,7 +68,7 @@ class VertexAIRAG:
             # Construct REST URL for Vertex AI Vector Search using PUBLIC endpoint (Streaming Index)
             # Use indexEndpoints path as discovered in working curl command
             rest_url = f"https://{public_endpoint_domain}/v1/projects/{project_id}/locations/{self._location}/indexEndpoints/{index_endpoint.split('/')[-1]}:findNeighbors"
-            print(f"[DEBUG] REST URL: {rest_url}")
+            #print(f"[DEBUG] REST URL: {rest_url}")
             
             # Prepare request
             request_body = {
