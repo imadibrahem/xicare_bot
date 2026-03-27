@@ -100,10 +100,10 @@ class VertexAIRAG:
             }            
             # Make REST request (blocking call within async context is OK for retrieval)
             response = httpx.post(rest_url, json=request_body, headers=headers, timeout=30.0)
-            print(f"[DEBUG] Vector Search response status: {response.status_code}")
+            #print(f"[DEBUG] Vector Search response status: {response.status_code}")
             
             if response.status_code != 200:
-                print(f"[ERROR] Vector Search REST API error: {response.status_code} - {response.text}")
+                #print(f"[ERROR] Vector Search REST API error: {response.status_code} - {response.text}")
                 return ""
             
             result = response.json()
@@ -117,10 +117,10 @@ class VertexAIRAG:
                     if neighbor_id:
                         neighbor_ids.append(neighbor_id)
             
-            print(f"[DEBUG] Found {len(neighbor_ids)} neighbors: {neighbor_ids[:5]}")
+            #print(f"[DEBUG] Found {len(neighbor_ids)} neighbors: {neighbor_ids[:5]}")
             
             if not neighbor_ids:
-                print(f"[DEBUG] No neighbors found in response")
+                #print(f"[DEBUG] No neighbors found in response")
                 return ""
             
             # Download metadata.jsonl from GCS
@@ -140,20 +140,20 @@ class VertexAIRAG:
             # Retrieve and concatenate relevant documents
             context_parts = []
             for neighbor_id in neighbor_ids[:top_k]:
-                print(f"[DEBUG] Checking ID: {neighbor_id}")
-                print(f"[DEBUG] Exists in metadata: {neighbor_id in id_to_uri}")
+                #print(f"[DEBUG] Checking ID: {neighbor_id}")
+                #print(f"[DEBUG] Exists in metadata: {neighbor_id in id_to_uri}")
 
                 base_id = neighbor_id.split("_part")[0]
-                print(f"[DEBUG] Trying base ID: {base_id}")
-                print(f"[DEBUG] Base ID exists: {base_id in id_to_uri}")
+                #print(f"[DEBUG] Trying base ID: {base_id}")
+                #print(f"[DEBUG] Base ID exists: {base_id in id_to_uri}")
 
                 gcs_uri = id_to_uri.get(neighbor_id) or id_to_uri.get(base_id)
 
                 if not gcs_uri:
-                    print(f"[DEBUG] ❌ No GCS URI found for: {neighbor_id}")
+                    #print(f"[DEBUG] ❌ No GCS URI found for: {neighbor_id}")
                     continue
 
-                print(f"[DEBUG] ✅ Found GCS URI: {gcs_uri}")
+                #print(f"[DEBUG] ✅ Found GCS URI: {gcs_uri}")
 
                 # Parse GCS URI: gs://bucket/path
                 bucket_name, blob_path = gcs_uri.replace("gs://", "").split("/", 1)
@@ -163,11 +163,11 @@ class VertexAIRAG:
                 context_parts.append(f"Document: {neighbor_id}\n{text_content}\n")     
 
             context = "\n".join(context_parts)
-            print(f"[DEBUG] Vector context prepared: {len(context)} total chars, {len(context_parts)} documents")
+            #print(f"[DEBUG] Vector context prepared: {len(context)} total chars, {len(context_parts)} documents")
             return context
             
         except Exception as e:
-            print(f"[ERROR] retrieving vector search context: {e}")
+            #print(f"[ERROR] retrieving vector search context: {e}")
             import traceback
             traceback.print_exc()
             return ""
@@ -209,24 +209,25 @@ class VertexAIRAG:
             str: The generated text response from the model.
         """
         # Handle Vector Search context retrieval
-        print(f"[DEBUG] generate_content: vector_search_index_endpoint={vector_search_index_endpoint}")
+        #print(f"[DEBUG] generate_content: vector_search_index_endpoint={vector_search_index_endpoint}")
         if vector_search_index_endpoint:
             # Get the last user message as query
             user_messages = [msg["text"] for msg in history if msg.get("role") == user_role]
             query = user_messages[-1] if user_messages else ""
-            print(f"[DEBUG] Query from user message: '{query[:50] if query else 'EMPTY'}'")
+            #print(f"[DEBUG] Query from user message: '{query[:50] if query else 'EMPTY'}'")
             
             if query:
                 vector_context = self._retrieve_vector_search_context(
                     query, vector_search_index_endpoint, vector_search_similarity_top_k or 20
                 )
-                print(f"[DEBUG] Vector context retrieved: {len(vector_context) if vector_context else 0} chars")
+                #print(f"[DEBUG] Vector context retrieved: {len(vector_context) if vector_context else 0} chars")
                 if vector_context:
                     system_prompt = f"{system_prompt}\n\nContext from knowledge base:\n{vector_context}"
-                    print(f"[DEBUG] System prompt updated with context")
+                    #print(f"[DEBUG] System prompt updated with context")
         else:
-            print(f"[DEBUG] No vector_search_index_endpoint provided, skipping vector search")
-        
+            #print(f"[DEBUG] No vector_search_index_endpoint provided, skipping vector search")
+            pass
+
         # Generate and parse response
         response = self._client.models.generate_content(
             model=model_name,
@@ -287,24 +288,25 @@ class VertexAIRAG:
             str: The generated text response from the model.
         """
         # Handle Vector Search context retrieval
-        print(f"[DEBUG] generate_content_async: vector_search_index_endpoint={vector_search_index_endpoint}")
+        #print(f"[DEBUG] generate_content_async: vector_search_index_endpoint={vector_search_index_endpoint}")
         if vector_search_index_endpoint:
             # Get the last user message as query
             user_messages = [msg["text"] for msg in history if msg.get("role") == user_role]
             query = user_messages[-1] if user_messages else ""
-            print(f"[DEBUG] Query from user message: '{query[:50] if query else 'EMPTY'}'")
+            #print(f"[DEBUG] Query from user message: '{query[:50] if query else 'EMPTY'}'")
             
             if query:
                 vector_context = self._retrieve_vector_search_context(
                     query, vector_search_index_endpoint, vector_search_similarity_top_k or 20
                 )
-                print(f"[DEBUG] Vector context retrieved: {len(vector_context) if vector_context else 0} chars")
+                #print(f"[DEBUG] Vector context retrieved: {len(vector_context) if vector_context else 0} chars")
                 if vector_context:
                     system_prompt = f"{system_prompt}\n\nContext from knowledge base:\n{vector_context}"
-                    print(f"[DEBUG] System prompt updated with context")
+                    #print(f"[DEBUG] System prompt updated with context")
         else:
-            print(f"[DEBUG] No vector_search_index_endpoint provided, skipping vector search")
-        
+            #print(f"[DEBUG] No vector_search_index_endpoint provided, skipping vector search")
+            pass
+
         # Generate and parse response
         response = await self._client.aio.models.generate_content(
             model=model_name,
