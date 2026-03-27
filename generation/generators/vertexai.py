@@ -63,8 +63,8 @@ class VertexAIRAG:
             deployed_index_id = os.getenv("VECTOR_SEARCH_DEPLOYED_INDEX_ID", "xicare_rag_endpoint_europe")
             
             # Construct REST URL for Vertex AI Vector Search using PUBLIC endpoint (Streaming Index)
-            # Public endpoints use simplified path structure (not full project/location/index path)
-            rest_url = f"https://{public_endpoint_domain}/v1/projects/{project_id}:findNeighbors"
+            # Use indexEndpoints path as discovered in working curl command
+            rest_url = f"https://{public_endpoint_domain}/v1/projects/{project_id}/locations/{self._location}/indexEndpoints/{index_endpoint.split('/')[-1]}:findNeighbors"
             
             # Get auth token (refresh if needed)
             from google.auth.transport.requests import Request
@@ -75,7 +75,6 @@ class VertexAIRAG:
             
             # Prepare request
             request_body = {
-                "index_id": index_id,
                 "deployed_index_id": deployed_index_id,
                 "queries": [
                     {

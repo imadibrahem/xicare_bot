@@ -66,11 +66,10 @@ try:
     print(f"✓ Authentication successful for project: {project}")
     
     # Construct REST request to PUBLIC endpoint for Streaming Index
-    # Streaming indexes use simplified public REST endpoint path (not full project/location/index path)
-    rest_url = f"https://{PUBLIC_ENDPOINT}/v1/projects/{PROJECT_ID}:findNeighbors"
+    # Use the indexEndpoints path as discovered in working curl command
+    rest_url = f"https://{PUBLIC_ENDPOINT}/v1/projects/{PROJECT_ID}/locations/{LOCATION}/indexEndpoints/{INDEX_ENDPOINT.split('/')[-1]}:findNeighbors"
     
     request_body = {
-        "index_id": INDEX_ID,
         "deployed_index_id": DEPLOYED_INDEX_ID,
         "queries": [
             {
