@@ -139,14 +139,28 @@ class VertexAIRAG:
             # Retrieve and concatenate relevant documents
             context_parts = []
             for neighbor_id in neighbor_ids[:top_k]:
-                gcs_uri = id_to_uri.get(neighbor_id)
-                if gcs_uri:
-                    # Parse GCS URI: gs://bucket/path
-                    bucket_name, blob_path = gcs_uri.replace("gs://", "").split("/", 1)
-                    blob = self._storage_client.bucket(bucket_name).blob(blob_path)
-                    text_content = blob.download_as_text()
-                    context_parts.append(f"Document: {neighbor_id}\n{text_content}\n")
-            
+                print(f"[DEBUG] Checking ID: {neighbor_id}")
+                print(f"[DEBUG] Exists in metadata: {neighbor_id in id_to_uri}")
+
+                base_id = neighbor_id.split("_part")[0]
+                print(f"[DEBUG] Trying base ID: {base_id}")
+                print(f"[DEBUG] Base ID exists: {base_id in id_to_uri}")
+
+                gcs_uri = id_to_uri.get(neighbor_id) or id_to_uri.get(base_id)
+
+                if not gcs_uri:
+                    print(f"[DEBUG] ❌ No GCS URI found for: {neighbor_id}")
+                    continue
+
+                print(f"[DEBUG] ✅ Found GCS URI: {gcs_uri}")
+
+                # Parse GCS URI: gs://bucket/path
+                bucket_name, blob_path = gcs_uri.replace("gs://", "").split("/", 1)
+                blob = self._storage_client.bucket(bucket_name).blob(blob_path)
+                text_content = blob.download_as_text()
+
+                context_parts.append(f"Document: {neighbor_id}\n{text_content}\n")     
+                       
             context = "\n".join(context_parts)
             print(f"[DEBUG] Vector context prepared: {len(context)} total chars, {len(context_parts)} documents")
             return context
