@@ -65,9 +65,9 @@ try:
     auth_token = credentials.token
     print(f"✓ Authentication successful for project: {project}")
     
-    # Construct REST request to public endpoint
-    # For Vertex AI Vector Search, use the standard AI Platform REST API with indexEndpoint
-    rest_url = f"https://{LOCATION}-aiplatform.googleapis.com/v1/{INDEX_ENDPOINT}:findNeighbors"
+    # Construct REST request to PUBLIC endpoint for Streaming Index
+    # Streaming indexes have a public REST endpoint, not the standard API gateway
+    rest_url = f"https://{PUBLIC_ENDPOINT}/v1/projects/{PROJECT_ID}/locations/{LOCATION}/indexes/{INDEX_ID}:findNeighbors"
     
     request_body = {
         "deployed_index_id": DEPLOYED_INDEX_ID,
