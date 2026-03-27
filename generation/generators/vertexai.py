@@ -82,11 +82,21 @@ class VertexAIRAG:
                 ]
             }
             
+            from google.auth.transport.requests import Request
+
+            credentials, _ = google.auth.default(
+                scopes=["https://www.googleapis.com/auth/cloud-platform"]
+            )
+
+            if not credentials.valid:
+                credentials.refresh(Request())
+
+            auth_token = credentials.token
+
             headers = {
                 "Authorization": f"Bearer {auth_token}",
                 "Content-Type": "application/json"
-            }
-            
+            }            
             # Make REST request (blocking call within async context is OK for retrieval)
             response = httpx.post(rest_url, json=request_body, headers=headers, timeout=30.0)
             print(f"[DEBUG] Vector Search response status: {response.status_code}")
