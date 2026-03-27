@@ -45,11 +45,13 @@ class VertexAIRAG:
 
     def _retrieve_vector_search_context(self, query: str, index_endpoint: str, top_k: int = 20) -> str:
         """Retrieve relevant documents from Vector Search (REST API) and return as context."""
+        print(f"[DEBUG] _retrieve_vector_search_context called with query='{query[:50]}...', index_endpoint='{index_endpoint}', top_k={top_k}")
         try:
             # Embed the query
             from vertexai.language_models import TextEmbeddingModel
             embedding_model = TextEmbeddingModel.from_pretrained("text-multilingual-embedding-002")
             query_embedding = embedding_model.get_embeddings([query])[0].values
+            print(f"[DEBUG] Embedding generated: {len(query_embedding)} dimensions")
             
             # Parse index_endpoint to extract public REST endpoint
             # Expected format: projects/655677396893/locations/europe-west4/indexEndpoints/4998863644985917440
@@ -65,13 +67,7 @@ class VertexAIRAG:
             # Construct REST URL for Vertex AI Vector Search using PUBLIC endpoint (Streaming Index)
             # Use indexEndpoints path as discovered in working curl command
             rest_url = f"https://{public_endpoint_domain}/v1/projects/{project_id}/locations/{self._location}/indexEndpoints/{index_endpoint.split('/')[-1]}:findNeighbors"
-            
-            # Get auth token (refresh if needed)
-            from google.auth.transport.requests import Request
-            credentials, _ = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
-            if not credentials.valid:
-                credentials.refresh(Request())
-            auth_token = credentials.token
+            print(f"[DEBUG] REST URL: {rest_url}")
             
             # Prepare request
             request_body = {
@@ -93,9 +89,10 @@ class VertexAIRAG:
             
             # Make REST request (blocking call within async context is OK for retrieval)
             response = httpx.post(rest_url, json=request_body, headers=headers, timeout=30.0)
+            print(f"[DEBUG] Vector Search response status: {response.status_code}")
             
             if response.status_code != 200:
-                print(f"Vector Search REST API error: {response.status_code} - {response.text}")
+                print(f"[ERROR] Vector Search REST API error: {response.status_code} - {response.text}")
                 return ""
             
             result = response.json()
@@ -109,7 +106,10 @@ class VertexAIRAG:
                     if neighbor_id:
                         neighbor_ids.append(neighbor_id)
             
+            print(f"[DEBUG] Found {len(neighbor_ids)} neighbors: {neighbor_ids[:5]}")
+            
             if not neighbor_ids:
+                print(f"[DEBUG] No neighbors found in response")
                 return ""
             
             # Download metadata.jsonl from GCS
@@ -137,10 +137,12 @@ class VertexAIRAG:
                     text_content = blob.download_as_text()
                     context_parts.append(f"Document: {neighbor_id}\n{text_content}\n")
             
-            return "\n".join(context_parts)
+            context = "\n".join(context_parts)
+            print(f"[DEBUG] Vector context prepared: {len(context)} total chars, {len(context_parts)} documents")
+            return context
             
         except Exception as e:
-            print(f"Error retrieving vector search context: {e}")
+            print(f"[ERROR] retrieving vector search context: {e}")
             import traceback
             traceback.print_exc()
             return ""
@@ -182,17 +184,23 @@ class VertexAIRAG:
             str: The generated text response from the model.
         """
         # Handle Vector Search context retrieval
+        print(f"[DEBUG] generate_content: vector_search_index_endpoint={vector_search_index_endpoint}")
         if vector_search_index_endpoint:
             # Get the last user message as query
             user_messages = [msg["text"] for msg in history if msg.get("role") == user_role]
             query = user_messages[-1] if user_messages else ""
+            print(f"[DEBUG] Query from user message: '{query[:50] if query else 'EMPTY'}'")
             
             if query:
                 vector_context = self._retrieve_vector_search_context(
                     query, vector_search_index_endpoint, vector_search_similarity_top_k or 20
                 )
+                print(f"[DEBUG] Vector context retrieved: {len(vector_context) if vector_context else 0} chars")
                 if vector_context:
                     system_prompt = f"{system_prompt}\n\nContext from knowledge base:\n{vector_context}"
+                    print(f"[DEBUG] System prompt updated with context")
+        else:
+            print(f"[DEBUG] No vector_search_index_endpoint provided, skipping vector search")
         
         # Generate and parse response
         response = self._client.models.generate_content(
@@ -254,17 +262,23 @@ class VertexAIRAG:
             str: The generated text response from the model.
         """
         # Handle Vector Search context retrieval
+        print(f"[DEBUG] generate_content_async: vector_search_index_endpoint={vector_search_index_endpoint}")
         if vector_search_index_endpoint:
             # Get the last user message as query
             user_messages = [msg["text"] for msg in history if msg.get("role") == user_role]
             query = user_messages[-1] if user_messages else ""
+            print(f"[DEBUG] Query from user message: '{query[:50] if query else 'EMPTY'}'")
             
             if query:
                 vector_context = self._retrieve_vector_search_context(
                     query, vector_search_index_endpoint, vector_search_similarity_top_k or 20
                 )
+                print(f"[DEBUG] Vector context retrieved: {len(vector_context) if vector_context else 0} chars")
                 if vector_context:
                     system_prompt = f"{system_prompt}\n\nContext from knowledge base:\n{vector_context}"
+                    print(f"[DEBUG] System prompt updated with context")
+        else:
+            print(f"[DEBUG] No vector_search_index_endpoint provided, skipping vector search")
         
         # Generate and parse response
         response = await self._client.aio.models.generate_content(
