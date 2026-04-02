@@ -54,19 +54,10 @@ class VertexAIRAG:
             query_embedding = embedding_model.get_embeddings([query])[0].values
             #print(f"[DEBUG] Embedding generated: {len(query_embedding)} dimensions")
             
-            # Parse index_endpoint to extract public REST endpoint
-            # Expected format: projects/655677396893/locations/europe-west4/indexEndpoints/4998863644985917440
-            # Deployed index ID from configuration: xicare_rag_endpoint_europe
-            # Index ID: 8473144466897633280
-            
-            # For now, hardcode these from config (should be parameterized)
-            public_endpoint_domain = os.getenv("VECTOR_SEARCH_PUBLIC_ENDPOINT", "1905681392.europe-west4-655677396893.vdb.vertexai.goog")
-            project_id = self._project.split("@")[0] if "@" in self._project else "655677396893"  # fallback to numeric ID
-            index_id = os.getenv("VECTOR_SEARCH_INDEX_ID", "8473144466897633280")
-            deployed_index_id = os.getenv("VECTOR_SEARCH_DEPLOYED_INDEX_ID", "xicare_rag_endpoint_europe")
-            
-            # Construct REST URL for Vertex AI Vector Search using PUBLIC endpoint (Streaming Index)
-            # Use indexEndpoints path as discovered in working curl command
+            public_endpoint_domain = os.environ["VECTOR_SEARCH_PUBLIC_ENDPOINT"]
+            project_id = os.environ["VECTOR_SEARCH_PROJECT_ID"]
+            deployed_index_id = os.environ["VECTOR_SEARCH_DEPLOYED_INDEX_ID"]
+
             rest_url = f"https://{public_endpoint_domain}/v1/projects/{project_id}/locations/{self._location}/indexEndpoints/{index_endpoint.split('/')[-1]}:findNeighbors"
             #print(f"[DEBUG] REST URL: {rest_url}")
             
