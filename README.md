@@ -69,19 +69,3 @@ After changing, either wait 5 minutes (config cache TTL) or restart:
 docker compose restart generation
 ```
 
-## Todo:
-
-- [x] Logos
-- [x] Text von Jean-Chris
-- [x] Chatbot Logo neben Textbox
-- [x] Überflüssiges Entfernen
-- [x] Push it to the server
-- [x] Enter funktion
-- [x] EA Logo
-- [x] EA-[1-3] Nutzerinnenname
-- [x] Safety settings in config
-- [x] enhance image
-- [x] Daumen hoch oder runter
-- [x] Kommentar funktion
-- [x] Auswertungscript
-- [x] Lukas github
